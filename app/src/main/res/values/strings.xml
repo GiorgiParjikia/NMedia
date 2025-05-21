@@ -1,4 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">NMedia</string>
     <string name="nmedia">NMedia!</string>
+    <string name="description_post_author_avatar" translatable="false">Post author avatar</string>
+    <string name="description_post_menu" translatable="false">Description post menu</string>
+    <string name="like_icon" translatable="false">Like icon</string>
+    <string name="like_count" translatable="false">10</string>
+    <string name="share_count" translatable="false">5</string>
+    <string name="view_count" translatable="false">5</string>
+    <string name="share_icon" translatable="false">Share Icon</string>
+    <string name="view_icon" translatable="false">View Icon</string>
 </resources>
