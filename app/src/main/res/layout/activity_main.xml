@@ -83,7 +83,7 @@
         app:barrierDirection="bottom"
         app:constraint_referenced_ids="content" />
 
-    <ImageView
+    <ImageButton
         android:id="@+id/like_icon"
         android:layout_width="@dimen/icon_size"
         android:layout_height="@dimen/icon_size"
@@ -105,7 +105,7 @@
         app:layout_constraintStart_toEndOf="@+id/like_icon"
         app:layout_constraintTop_toBottomOf="@+id/barrier2"/>
 
-    <ImageView
+    <ImageButton
         android:id="@+id/share_icon"
         android:layout_width="@dimen/icon_size"
         android:layout_height="@dimen/icon_size"
