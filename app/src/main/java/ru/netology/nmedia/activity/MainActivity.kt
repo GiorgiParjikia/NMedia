@@ -6,10 +6,10 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import ru.netology.nmedia.viewmodel.PostViewModel
 import ru.netology.nmedia.R
+import ru.netology.nmedia.adapter.PostAdapter
 import ru.netology.nmedia.databinding.ActivityMainBinding
-import ru.netology.nmedia.formatCount
+import ru.netology.nmedia.viewmodel.PostViewModel
 
 class MainActivity : AppCompatActivity() {
 
@@ -21,27 +21,19 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(binding.root)
 
-        viewModel.data.observe(this) { post ->
-            with(binding) {
-                authorName.text = post.author
-                content.text = post.content
-                publishDate.text = post.published
-                likeCount.text = formatCount(post.likes)
-                shareCount.text = formatCount(post.shares)
-
-                likeIcon.setImageResource(
-                    if (post.likeByMe) R.drawable.favorite_24dp_ea3323
-                    else R.drawable.favorite_border_24dp_1f1f1f
-                )
-
-                likeIcon.setOnClickListener {
-                    viewModel.like()
-                }
-
-                shareIcon.setOnClickListener {
-                    viewModel.share()
-                }
+        val adapter = PostAdapter(
+            onLikeListener = { post ->
+                viewModel.like(post.id)
+            },
+            onShareListener = { post ->
+                viewModel.share(post.id)
             }
+        )
+
+        binding.list.adapter = adapter
+
+        viewModel.data.observe(this) { posts ->
+            adapter.submitList(posts)
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->

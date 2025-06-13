@@ -2,7 +2,7 @@ package ru.netology.nmedia
 
 import kotlin.math.floor
 
-fun formatCount(count: Int): String {
+fun formatCount(count: Long): String {
     return when {
         count < 1_000 -> count.toString()
         count < 10_000 -> {
