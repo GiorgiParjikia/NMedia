@@ -10,4 +10,12 @@
     <string name="view_count" translatable="false">5</string>
     <string name="share_icon" translatable="false">Share Icon</string>
     <string name="view_icon" translatable="false">View Icon</string>
+    <string name="menu_remove">Remove</string>
+    <string name="post_text">Content</string>
+    <string name="error_empty_content">the content cannot be empty</string>
+    <string name="menu_edit">Edit</string>
+    <string name="edit_post">Edit Message</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+
 </resources>
