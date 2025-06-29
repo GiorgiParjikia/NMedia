@@ -16,21 +16,23 @@ class PostViewHolder(
         authorName.text = post.author
         content.text = post.content
         publishDate.text = post.published
-        likeCount.text = formatCount(post.likes)
-        shareCount.text = formatCount(post.shares)
 
-        likeIcon.setImageResource(
-            if (post.likeByMe) R.drawable.favorite_24dp_ea3323
-            else R.drawable.favorite_border_24dp_1f1f1f
-        )
-
-        likeIcon.setOnClickListener {
-            onInteractionListener.onLike(post)
+        likeIcon.apply {
+            isChecked = post.likeByMe
+            text = formatCount(post.likes)
+            setOnClickListener {
+                onInteractionListener.onLike(post)
+            }
         }
 
-        shareIcon.setOnClickListener {
-            onInteractionListener.onShare(post)
+        shareButton.apply {
+            text = formatCount(post.shares)
+            setOnClickListener {
+                onInteractionListener.onShare(post)
+            }
         }
+
+        viewButton.text = formatCount(post.views)
 
         menu.setOnClickListener {
             PopupMenu(it.context, it).apply {
@@ -41,12 +43,10 @@ class PostViewHolder(
                             onInteractionListener.onRemove(post)
                             true
                         }
-
                         R.id.edit -> {
                             onInteractionListener.onEdit(post)
                             true
                         }
-
                         else -> false
                     }
                 }
