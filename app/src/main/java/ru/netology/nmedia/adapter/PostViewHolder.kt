@@ -35,22 +35,30 @@ class PostViewHolder(
         viewButton.text = formatCount(post.views)
 
         menu.setOnClickListener {
-            PopupMenu(it.context, it).apply {
-                inflate(R.menu.post_options)
-                setOnMenuItemClickListener { item ->
-                    when (item.itemId) {
-                        R.id.remove -> {
-                            onInteractionListener.onRemove(post)
-                            true
-                        }
-                        R.id.edit -> {
-                            onInteractionListener.onEdit(post)
-                            true
-                        }
-                        else -> false
+            menu.isChecked = true
+
+            val popup = PopupMenu(it.context, it)
+            popup.inflate(R.menu.post_options)
+
+            popup.setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    R.id.remove -> {
+                        onInteractionListener.onRemove(post)
+                        true
                     }
+                    R.id.edit -> {
+                        onInteractionListener.onEdit(post)
+                        true
+                    }
+                    else -> false
                 }
-            }.show()
+            }
+
+            popup.setOnDismissListener {
+                menu.isChecked = false
+            }
+
+            popup.show()
         }
     }
 }
