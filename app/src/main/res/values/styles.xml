@@ -9,4 +9,13 @@
         <item name="android:insetLeft">0dp</item>
         <item name="android:insetRight">0dp</item>
     </style>
+
+    <style name="style_menu_button" parent="Widget.MaterialComponents.Button.TextButton.Icon">
+        <item name="iconTint">@color/selector_menu</item>
+        <item name="android:backgroundTint">@android:color/transparent</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:insetLeft">0dp</item>
+        <item name="android:insetRight">0dp</item>
+    </style>
 </resources>
