@@ -1,9 +1,7 @@
 package ru.netology.nmedia.adapter
 
-import android.content.Intent
-import androidx.core.net.toUri
-import androidx.core.view.isVisible
 import androidx.appcompat.widget.PopupMenu
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import ru.netology.nmedia.R
 import ru.netology.nmedia.databinding.CardPostBinding
@@ -49,19 +47,10 @@ class PostViewHolder(
 
         val hasVideo = !post.video.isNullOrBlank()
         videoGroup.isVisible = hasVideo
-
         if (hasVideo) {
-            val openVideo = {
-                val ctx = root.context
-                val intent = Intent(Intent.ACTION_VIEW, post.video!!.toUri())
-                try {
-                    ctx.startActivity(intent)
-                } catch (_: Exception) {
-                    // Toast.makeText(ctx, R.string.no_app_to_open, Toast.LENGTH_SHORT).show()
-                }
-            }
-            videoGroup.setOnClickListener { openVideo() }
-            btnPlay.setOnClickListener { openVideo() }
+            val url = post.video!!
+            videoGroup.setOnClickListener { onInteractionListener.onOpenVideo(url) }
+            btnPlay.setOnClickListener    { onInteractionListener.onOpenVideo(url) }
         } else {
             videoGroup.setOnClickListener(null)
             btnPlay.setOnClickListener(null)

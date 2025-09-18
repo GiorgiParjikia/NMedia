@@ -15,8 +15,8 @@ interface OnInteractionListener {
     fun onRemove(post: Post)
     fun onEdit(post: Post)
     fun onShare(post: Post)
+    fun onOpenVideo(url: String) {}
 }
-
 
 class PostAdapter(
     private val onInteractionListener: OnInteractionListener,

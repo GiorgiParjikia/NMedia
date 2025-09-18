@@ -20,4 +20,5 @@
     <string name="chooser_share_post">Share</string>
     <string name="play">Play</string>
     <string name="description_video_thumbnail" translatable="false">Video placeholder</string>
+    <string name="no_app_to_open">No app to open link</string>
 </resources>

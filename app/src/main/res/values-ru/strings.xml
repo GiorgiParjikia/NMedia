@@ -11,5 +11,6 @@
     <string name="save">Сохранить</string>
     <string name="chooser_share_post">Поделится</string>
     <string name="play">Возпроизвести</string>
+    <string name="no_app_to_open">Нет приложения для открытия ссылки</string>
 
 </resources>
