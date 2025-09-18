@@ -12,10 +12,12 @@
     <string name="view_icon" translatable="false">View Icon</string>
     <string name="menu_remove">Remove</string>
     <string name="post_text">Content</string>
-    <string name="error_empty_content">the content cannot be empty</string>
+    <string name="error_empty_content">The content cannot be empty</string>
     <string name="menu_edit">Edit</string>
     <string name="edit_post">Edit Message</string>
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
-
+    <string name="chooser_share_post">Share</string>
+    <string name="play">Play</string>
+    <string name="description_video_thumbnail" translatable="false">Video placeholder</string>
 </resources>

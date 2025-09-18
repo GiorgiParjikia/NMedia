@@ -22,6 +22,7 @@ class PostRepositoryInMemoryImpl : PostRepository {
             content = "Как отличить программиста-интроверта от экстраверта?\n" +
                     "Интроверт смотрит на свои ботинки, когда с тобой разговаривает.\n" +
                     "Экстраверт — на твои.",
+            video = "https://youtu.be/xT8oP0wy-A0?si=Y2_Lv2RA4PXPwxIa",
             likeByMe = false
         ),
         Post(
