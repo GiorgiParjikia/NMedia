@@ -16,6 +16,7 @@ interface OnInteractionListener {
     fun onEdit(post: Post)
     fun onShare(post: Post)
     fun onOpenVideo(url: String) {}
+    fun onOpen(post: Post) {}
 }
 
 class PostAdapter(
