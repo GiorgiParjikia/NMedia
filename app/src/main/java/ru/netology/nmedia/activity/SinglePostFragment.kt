@@ -39,7 +39,6 @@ class SinglePostFragment : Fragment() {
     ): View {
         _binding = FragmentSinglePostBinding.inflate(inflater, container, false)
 
-        // В деталях не надо открывать детали по клику на карточку
         binding.post.root.setOnClickListener(null)
 
         viewModel.data.observe(viewLifecycleOwner) { posts ->
