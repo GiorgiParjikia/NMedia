@@ -10,5 +10,7 @@ class DraftRepository(context: Context) {
     fun get(): String = prefs.getString(KEY, "") ?: ""
     fun clear() = prefs.edit { remove(KEY) }
 
-    private companion object { const val KEY = "new_post_draft" }
+    private companion object {
+        const val KEY = "new_post_draft"
+    }
 }

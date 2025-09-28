@@ -23,6 +23,8 @@ class NewPostFragment : Fragment() {
     private val isEditMode: Boolean
         get() = arguments?.textArgs != null
 
+    private var suppressNextDraftSave = false
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
@@ -33,6 +35,7 @@ class NewPostFragment : Fragment() {
         binding.save.setOnClickListener {
             val content = binding.edit.text?.toString()?.trim().orEmpty()
             if (content.isNotBlank()) {
+                suppressNextDraftSave = true
                 viewModel.changeContent(content)
                 viewModel.save()
             }
@@ -67,8 +70,12 @@ class NewPostFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         if (!isEditMode) {
-            val text = binding.edit.text?.toString()?.trim().orEmpty()
-            if (text.isNotEmpty()) viewModel.saveDraft(text)
+            if (suppressNextDraftSave) {
+                suppressNextDraftSave = false
+            } else {
+                val text = binding.edit.text?.toString()?.trim().orEmpty()
+                if (text.isNotEmpty()) viewModel.saveDraft(text)
+            }
         }
     }
 
