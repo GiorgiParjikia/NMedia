@@ -1,4 +1,4 @@
-package ru.netology.nmedia.repository
+/*package ru.netology.nmedia.repository
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -10,7 +10,6 @@ class PostRepositorySQLiteImpl(
     private val dao: PostDao
 ) : PostRepository {
 
-    // храним LiveData внутри репозитория
     private val data = MutableLiveData(dao.getAll())
 
     override fun get(): LiveData<List<Post>> = data
@@ -39,3 +38,4 @@ class PostRepositorySQLiteImpl(
         data.value = dao.getAll()
     }
 }
+ */

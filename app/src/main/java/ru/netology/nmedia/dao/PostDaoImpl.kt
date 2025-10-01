@@ -1,4 +1,4 @@
-package ru.netology.nmedia.dao
+/*package ru.netology.nmedia.dao
 
 import android.content.ContentValues
 import android.database.Cursor
@@ -7,7 +7,6 @@ import ru.netology.nmedia.dto.Post
 
 class PostDaoImpl(private val db: SQLiteDatabase) : PostDao {
 
-    // Имена таблицы/колонок в одном месте
     private object PostColumns {
         const val TABLE = "Posts"
 
@@ -54,8 +53,7 @@ class PostDaoImpl(private val db: SQLiteDatabase) : PostDao {
             put(PostColumns.COLUMN_AUTHOR, if (post.author.isBlank()) "Me" else post.author)
             put(PostColumns.COLUMN_CONTENT, post.content)
             put(PostColumns.COLUMN_PUBLISHED, if (post.published.isBlank()) "now" else post.published)
-            put(PostColumns.COLUMN_VIDEO, post.video) // null допустим
-            // likes/shared/views/likeByMe храним как есть при insert (если новый пост)
+            put(PostColumns.COLUMN_VIDEO, post.video)
             put(PostColumns.COLUMN_LIKES, post.likes)
             put(PostColumns.COLUMN_SHARED, post.shares)
             put(PostColumns.COLUMN_VIEWS, post.views)
@@ -74,7 +72,6 @@ class PostDaoImpl(private val db: SQLiteDatabase) : PostDao {
             db.insert(PostColumns.TABLE, null, values)
         }
 
-        // Возвращаем свежую запись из БД (на случай автогенерируемого id)
         db.query(
             PostColumns.TABLE,
             PostColumns.ALL,
@@ -88,7 +85,6 @@ class PostDaoImpl(private val db: SQLiteDatabase) : PostDao {
     }
 
     override fun likeById(id: Long) {
-        // Тогглим likeByMe и корректируем likes за один UPDATE
         db.execSQL(
             """
             UPDATE ${PostColumns.TABLE} SET
@@ -121,7 +117,6 @@ class PostDaoImpl(private val db: SQLiteDatabase) : PostDao {
         )
     }
 
-    // --- mapping ---
     private fun map(c: Cursor): Post = with(c) {
         Post(
             id = getLong(getColumnIndexOrThrow(PostColumns.COLUMN_ID)),
@@ -136,3 +131,5 @@ class PostDaoImpl(private val db: SQLiteDatabase) : PostDao {
         )
     }
 }
+
+ */
