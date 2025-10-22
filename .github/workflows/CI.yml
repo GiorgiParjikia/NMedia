@@ -19,19 +19,20 @@ jobs:
         with:
           java-version: 17
 
-      # 👇 добавляем этот шаг — восстановление google-services.json из секрета
       - name: Create google-services.json
-        run: echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
+        shell: bash
         env:
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-
-      - name: Build
+          # берём твой секрет по имени FIREBASE_SECRET
+          FIREBASE_SECRET: ${{ secrets.FIREBASE_SECRET }}
         run: |
-          chmod +x ./gradlew
-          ./gradlew assembleDebug
+          mkdir -p app
+          # пишем содержимое секрета в файл (printf корректно сохраняет переносы)
+          printf '%s' "$FIREBASE_SECRET" > app/google-services.json
+          echo "Created app/google-services.json"
+          ls -la app
+          # проверяем, что файл не пустой
+          if [ ! -s app/google-services.json ]; then
+            echo "ERROR: google-services.json is empty. Check FIREBASE_SECRET." >&2
+            exit 1
+          fi
 
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-debug.apk
-          path: app/build/outputs/apk/debug/app-debug.apk
