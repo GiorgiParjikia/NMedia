@@ -1,4 +1,12 @@
-package ru.netology.nmedia.activity
+package ru.netology.nmedia.model
 
-class Action {
+enum class Action {
+    LIKE,
+    NEW_POST,
+    UNKNOWN;
+
+    companion object {
+        fun from(raw: String?): Action =
+            entries.firstOrNull { it.name == raw } ?: UNKNOWN
+    }
 }
