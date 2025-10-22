@@ -22,15 +22,12 @@ jobs:
       - name: Create google-services.json
         shell: bash
         env:
-          # берём твой секрет по имени FIREBASE_SECRET
           FIREBASE_SECRET: ${{ secrets.FIREBASE_SECRET }}
         run: |
           mkdir -p app
-          # пишем содержимое секрета в файл (printf корректно сохраняет переносы)
           printf '%s' "$FIREBASE_SECRET" > app/google-services.json
           echo "Created app/google-services.json"
           ls -la app
-          # проверяем, что файл не пустой
           if [ ! -s app/google-services.json ]; then
             echo "ERROR: google-services.json is empty. Check FIREBASE_SECRET." >&2
             exit 1
