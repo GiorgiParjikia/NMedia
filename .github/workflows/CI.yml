@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: '*'
+    branches: ['*']
   pull_request:
-    branches: '*'
+    branches: ['*']
 
 jobs:
   build:
@@ -19,10 +19,16 @@ jobs:
         with:
           java-version: 17
 
+      # 👇 добавляем этот шаг — восстановление google-services.json из секрета
+      - name: Create google-services.json
+        run: echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+
       - name: Build
         run: |
           chmod +x ./gradlew
-          ./gradlew build
+          ./gradlew assembleDebug
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
