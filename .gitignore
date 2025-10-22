@@ -48,6 +48,7 @@ captures/
 !gradle/wrapper/gradle-wrapper.jar
 
 ### 🔒 Firebase & Sensitive files ###
+fcm.json
 google-services.json
 service-account.json
 *.pem
