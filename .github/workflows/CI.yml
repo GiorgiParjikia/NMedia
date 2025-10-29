@@ -2,9 +2,15 @@ name: CI
 
 on:
   push:
+<<<<<<< HEAD
     branches: '*'
   pull_request:
     branches: '*'
+=======
+    branches: ['*']
+  pull_request:
+    branches: ['*']
+>>>>>>> f92bf4853f0e0a28f5dda3d580d6a8a3de16199a
 
 jobs:
   build:
@@ -19,6 +25,7 @@ jobs:
         with:
           java-version: 17
 
+<<<<<<< HEAD
       - name: Build
         run: |
           chmod +x ./gradlew
@@ -29,3 +36,19 @@ jobs:
         with:
           name: app-debug.apk
           path: app/build/outputs/apk/debug/app-debug.apk
+=======
+      - name: Create google-services.json
+        shell: bash
+        env:
+          FIREBASE_SECRET: ${{ secrets.FIREBASE_SECRET }}
+        run: |
+          mkdir -p app
+          printf '%s' "$FIREBASE_SECRET" > app/google-services.json
+          echo "Created app/google-services.json"
+          ls -la app
+          if [ ! -s app/google-services.json ]; then
+            echo "ERROR: google-services.json is empty. Check FIREBASE_SECRET." >&2
+            exit 1
+          fi
+
+>>>>>>> f92bf4853f0e0a28f5dda3d580d6a8a3de16199a
