@@ -12,5 +12,9 @@
     <string name="chooser_share_post">Поделится</string>
     <string name="play">Возпроизвести</string>
     <string name="no_app_to_open">Нет приложения для открытия ссылки</string>
+    <string name="empty_posts">Нет постов</string>
+    <string name="add_post">Добавить пост</string>
+    <string name="error_loading">Ошибка соединения</string>
+    <string name="retry">Повторить</string>
 
 </resources>

@@ -5,69 +5,148 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import ru.netology.nmedia.dto.Post
+import ru.netology.nmedia.model.FeedModel
 import ru.netology.nmedia.repository.DraftRepository
 import ru.netology.nmedia.repository.PostRepositoryNetworkImpl
+import kotlin.concurrent.thread
 
 private val empty = Post(
     id = 0,
-    author = "",
-    published = "",
+    author = "Me",
+    published = "now",
     content = "",
-    likeByMe = false
+    likeByMe = false,
+    likes = 0,
+    shares = 0,
+    views = 0,
+    video = null,
 )
 
 class PostViewModel(application: Application) : AndroidViewModel(application) {
 
-    // теперь мы работаем через сеть, а не через SQLite
+    // сетевой репозиторий
     private val repository = PostRepositoryNetworkImpl()
 
+    // локальные черновики
     private val draftRepo = DraftRepository(application)
 
-    // лента постов для UI
-    val data: LiveData<List<Post>> = repository.get()
+    // ============== состояние экрана ленты ==============
+    // FeedModel = (posts + loading + error + empty)
+    private val _data = MutableLiveData(FeedModel())
+    val data: LiveData<FeedModel> get() = _data
 
-    // редактируемый пост (у тебя уже было)
+    // текущий редактируемый пост (для NewPostFragment / редактирования существующего)
     val edited = MutableLiveData(empty)
 
     init {
-        // при старте вьюмодели сразу грузим посты с сервера
-        repository.refresh()
+        // сразу грузим посты при старте VM
+        loadPosts()
     }
 
-    // черновики оставляем как есть, они локальные и не мешают сетевой части
-    fun saveDraft(text: String) = draftRepo.save(text)
-    fun getDraft(): String = draftRepo.get()
-    fun clearDraft() = draftRepo.clear()
+    // Подгрузка ленты с сервера
+    fun loadPosts() {
+        thread {
+            // показываем прогресс
+            _data.postValue(
+                FeedModel(
+                    posts = _data.value?.posts ?: emptyList(),
+                    loading = true,
+                    error = false,
+                    empty = false
+                )
+            )
 
-    // ЛАЙК теперь идёт в сеть
-    fun like(id: Long) = repository.like(id)
+            // пробуем получить список постов
+            val newState = try {
+                val posts = repository.getAllBlocking()
+                FeedModel(
+                    posts = posts,
+                    loading = false,
+                    error = false,
+                    empty = posts.isEmpty()
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                FeedModel(
+                    posts = _data.value?.posts ?: emptyList(),
+                    loading = false,
+                    error = true,
+                    empty = false
+                )
+            }
 
-    // Остальное пока просто прокидываем в репозиторий,
-    // но в PostRepositoryNetworkImpl это заглушки.
-    fun share(id: Long) = repository.share(id)
-    fun removeById(id: Long) = repository.removeById(id)
+            _data.postValue(newState)
+        }
+    }
 
+    // лайк / дизлайк
+    fun like(id: Long) {
+        thread {
+            try {
+                repository.like(id)
+            } finally {
+                // после лайка просто перезагрузим, чтобы числа и флажок обновились
+                loadPosts()
+            }
+        }
+    }
+
+    // удалить пост
+    fun removeById(id: Long) {
+        thread {
+            try {
+                repository.removeById(id)
+            } finally {
+                loadPosts()
+            }
+        }
+    }
+
+    // сохранить (новый пост или отредактированный)
+    fun save() {
+        val postToSave = edited.value ?: return
+
+        thread {
+            try {
+                repository.save(postToSave)
+            } finally {
+                // сбрасываем состояние "редактируемого"
+                edited.postValue(empty)
+                // очищаем черновик после успешного сохранения
+                clearDraft()
+                // перезагружаем ленту
+                loadPosts()
+            }
+        }
+    }
+
+    // вызвать при наборе текста
     fun changeContent(content: String) {
         val text = content.trim()
-        edited.value?.let {
-            if (text == it.content) return
-            edited.value = it.copy(content = text)
-        }
+        val current = edited.value ?: return
+        if (text == current.content) return
+
+        edited.value = current.copy(content = text)
     }
 
-    fun save() {
-        edited.value?.let {
-            repository.save(it)
-        }
-        edited.value = empty
-        clearDraft()
-    }
-
+    // начать редактировать существующий пост
     fun edit(post: Post) {
         edited.value = post
     }
 
+    // сбросить состояние редактируемого поста (когда жмём + или уходим без сохранения)
     fun clearEdit() {
         edited.value = empty
+    }
+
+    // ---------------- Черновики ----------------
+
+    fun saveDraft(text: String) = draftRepo.save(text)
+    fun getDraft(): String = draftRepo.get()
+    fun clearDraft() = draftRepo.clear()
+
+    // retry из экрана ошибки
+    fun retry() {
+        loadPosts()
     }
 }
