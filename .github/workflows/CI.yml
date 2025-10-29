@@ -2,15 +2,9 @@ name: CI
 
 on:
   push:
-<<<<<<< HEAD
-    branches: '*'
-  pull_request:
-    branches: '*'
-=======
     branches: ['*']
   pull_request:
     branches: ['*']
->>>>>>> f92bf4853f0e0a28f5dda3d580d6a8a3de16199a
 
 jobs:
   build:
@@ -25,18 +19,6 @@ jobs:
         with:
           java-version: 17
 
-<<<<<<< HEAD
-      - name: Build
-        run: |
-          chmod +x ./gradlew
-          ./gradlew build
-
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-debug.apk
-          path: app/build/outputs/apk/debug/app-debug.apk
-=======
       - name: Create google-services.json
         shell: bash
         env:
@@ -51,4 +33,13 @@ jobs:
             exit 1
           fi
 
->>>>>>> f92bf4853f0e0a28f5dda3d580d6a8a3de16199a
+      - name: Build
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk

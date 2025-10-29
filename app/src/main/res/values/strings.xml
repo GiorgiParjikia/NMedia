@@ -10,4 +10,20 @@
     <string name="view_count" translatable="false">5</string>
     <string name="share_icon" translatable="false">Share Icon</string>
     <string name="view_icon" translatable="false">View Icon</string>
+    <string name="menu_remove">Remove</string>
+    <string name="post_text">Content</string>
+    <string name="error_empty_content">The content cannot be empty</string>
+    <string name="menu_edit">Edit</string>
+    <string name="edit_post">Edit Message</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="chooser_share_post">Share</string>
+    <string name="play">Play</string>
+    <string name="description_video_thumbnail" translatable="false">Video placeholder</string>
+    <string name="no_app_to_open">No app to open link</string>
+    <string name="empty_posts">No Post</string>
+    <string name="add_post">Add post</string>
+    <string name="error_loading">Network error</string>
+    <string name="retry">Retry</string>
+
 </resources>
