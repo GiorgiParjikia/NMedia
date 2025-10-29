@@ -28,7 +28,6 @@ class NewPostFragment : Fragment() {
     private val isEditMode: Boolean
         get() = arguments?.textArgs != null
 
-    // чтобы не сохранять черновик сразу после успешного Save
     private var suppressNextDraftSave = false
 
     override fun onCreateView(
@@ -41,25 +40,16 @@ class NewPostFragment : Fragment() {
         // если редактируем существующий пост — подставить текст в поле
         arguments?.textArgs?.let(binding.edit::setText)
 
-        // нажали "СОХРАНИТЬ"
+        // Нажали "СОХРАНИТЬ"
         binding.save.setOnClickListener {
             val content = binding.edit.text?.toString()?.trim().orEmpty()
             if (content.isNotBlank()) {
                 suppressNextDraftSave = true
-
-                // 1. кладём текст во viewModel
                 viewModel.changeContent(content)
-
-                // 2. просим viewModel сохранить (новый или отредактированный пост)
                 viewModel.save()
-
-                // 3. прячем клаву
                 hideKeyboard()
-
-                // 4. уходим назад на список
-                findNavController().navigateUp()
             } else {
-                // ничего не делаем если пусто (можно позже показать Toast "пустой пост")
+                // TODO: можно добавить Toast с сообщением "Пост не может быть пустым"
             }
         }
 
@@ -69,8 +59,7 @@ class NewPostFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // если создаём НОВЫЙ пост (не редактируем) и поле пустое —
-        // попробуем подгрузить черновик
+        // загрузка черновика, если поле пустое
         if (!isEditMode && binding.edit.text.isNullOrBlank()) {
             val draft = viewModel.getDraft()
             if (draft.isNotBlank()) {
@@ -78,7 +67,14 @@ class NewPostFragment : Fragment() {
             }
         }
 
-        // перехватываем системную "назад"
+        // ✅ Подписка на SingleLiveEvent (оповещение о создании поста)
+        viewModel.postCreated.observe(viewLifecycleOwner) {
+            // когда ViewModel завершила сохранение — переходим назад
+            viewModel.loadPosts()
+            findNavController().navigateUp()
+        }
+
+        // перехватываем системную "Назад"
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
@@ -99,9 +95,6 @@ class NewPostFragment : Fragment() {
     override fun onPause() {
         super.onPause()
 
-        // если мы НЕ редактируем существующий пост (т.е. создаём новый)
-        // и это не момент сразу после успешного сохранения —
-        // то сохраним черновик
         if (!isEditMode) {
             if (suppressNextDraftSave) {
                 suppressNextDraftSave = false
