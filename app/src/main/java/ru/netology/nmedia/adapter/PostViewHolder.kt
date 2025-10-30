@@ -21,7 +21,7 @@ class PostViewHolder(
         root.setOnClickListener { onInteractionListener.onOpen(post) }
 
         likeIcon.apply {
-            isChecked = post.likeByMe
+            isChecked = post.likedByMe
             text = formatCount(post.likes)
             setOnClickListener { onInteractionListener.onLike(post) }
         }

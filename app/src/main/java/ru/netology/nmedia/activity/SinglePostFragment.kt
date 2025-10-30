@@ -62,7 +62,7 @@ class SinglePostFragment : Fragment() {
         publishDate.text = post.published
 
         // лайки
-        likeIcon.isChecked = post.likeByMe
+        likeIcon.isChecked = post.likedByMe
         likeIcon.text = formatCount(post.likes)
         likeIcon.setOnClickListener {
             viewModel.like(post.id)

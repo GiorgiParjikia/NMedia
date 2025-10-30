@@ -7,9 +7,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import ru.netology.nmedia.dto.Post
-import ru.netology.nmedia.dto.PostCreateRequest
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import android.util.Log
 
 class PostRepositoryNetworkImpl : PostRepository {
 
@@ -22,7 +22,6 @@ class PostRepositoryNetworkImpl : PostRepository {
     private val listType = object : TypeToken<List<Post>>() {}.type
 
     companion object {
-        // На эмуляторе 10.0.2.2 = localhost хоста
         private const val BASE_URL = "http://10.0.2.2:9999"
     }
 
@@ -33,9 +32,7 @@ class PostRepositoryNetworkImpl : PostRepository {
             .build()
 
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IOException("GET /api/posts failed: ${response.code}")
-            }
+            if (!response.isSuccessful) throw IOException("GET /api/posts failed: ${response.code}")
 
             val bodyString = response.body?.string()
                 ?: throw IOException("Response body is null")
@@ -46,18 +43,29 @@ class PostRepositoryNetworkImpl : PostRepository {
 
     // ====== 2. Лайк / дизлайк ======
     override fun likeById(id: Long): Post {
+        // Сначала запрашиваем пост, чтобы узнать текущее состояние
+        val allPosts = getAll()
+        val current = allPosts.firstOrNull { it.id == id }
+            ?: throw IOException("Post with id=$id not found")
+
+        val isLiked = current.likedByMe
+        val method = if (isLiked) "DELETE" else "POST"
+        val action = if (isLiked) "unlike" else "like"
+
         val request = Request.Builder()
             .url("$BASE_URL/api/posts/$id/likes")
-            .post("".toRequestBody()) // тело пустое
+            .method(method, if (isLiked) null else "".toRequestBody())
             .build()
 
+        Log.i("NETWORK", "$method /api/posts/$id/likes — $action")
+
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IOException("POST /posts/$id/likes failed: ${response.code}")
-            }
+            if (!response.isSuccessful) throw IOException("$method /api/posts/$id/likes failed: ${response.code}")
 
             val bodyString = response.body?.string()
                 ?: throw IOException("Response body is null on likeById()")
+
+            Log.i("NETWORK", "Response body: $bodyString")
 
             return gson.fromJson(bodyString, Post::class.java)
         }
@@ -71,37 +79,19 @@ class PostRepositoryNetworkImpl : PostRepository {
             .build()
 
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IOException("DELETE /api/posts/$id failed: ${response.code}")
-            }
+            if (!response.isSuccessful) throw IOException("DELETE /api/posts/$id failed: ${response.code}")
         }
-        // ничего не возвращаем
     }
 
-    // ====== 4. Сохранить пост (новый или редактированный) ======
+    // ====== 4. Сохранить пост ======
     override fun save(post: Post): Post {
-        // 🔧 Формируем тело запроса так, как ожидает сервер
-        val payload = PostCreateRequest(
-            id = if (post.id == 0L) 0L else post.id,
-            author = post.author,
-            content = post.content,
-            published = 0L, // сервер сам проставит актуальное время
-            likedByMe = post.likeByMe,
-            likes = post.likes.toInt()
-        )
-
         val request = Request.Builder()
             .url("$BASE_URL/api/posts")
-            .post(
-                gson.toJson(payload)
-                    .toRequestBody(jsonType)
-            )
+            .post(gson.toJson(post).toRequestBody(jsonType))
             .build()
 
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IOException("POST /api/posts failed: ${response.code}")
-            }
+            if (!response.isSuccessful) throw IOException("POST /api/posts failed: ${response.code}")
 
             val bodyString = response.body?.string()
                 ?: throw IOException("Response body is null on save()")
