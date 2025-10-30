@@ -14,7 +14,6 @@ import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import ru.netology.nmedia.R
-import ru.netology.nmedia.activity.NewPostFragment.Companion.textArgs
 import ru.netology.nmedia.adapter.OnInteractionListener
 import ru.netology.nmedia.adapter.PostAdapter
 import ru.netology.nmedia.databinding.FragmentFeedBinding
@@ -63,10 +62,7 @@ class FeedFragment : Fragment() {
 
             override fun onEdit(post: Post) {
                 viewModel.edit(post)
-                findNavController().navigate(
-                    R.id.action_feedFragment_to_newPostFragment,
-                    Bundle().apply { textArgs = post.content }
-                )
+                findNavController().navigate(R.id.action_feedFragment_to_newPostFragment)
             }
 
             override fun onOpenVideo(url: String) {
@@ -91,22 +87,26 @@ class FeedFragment : Fragment() {
         binding.list.layoutManager = LinearLayoutManager(requireContext())
         binding.list.adapter = adapter
 
-        // наблюдаем за state: FeedModel из viewModel.data
+        // свайп для обновления
+        binding.swipeRefresh.setOnRefreshListener {
+            viewModel.loadPosts()
+        }
+
+        // наблюдаем за состоянием данных
         viewModel.data.observe(viewLifecycleOwner) { state ->
             val posts = state.posts
-
-            // обновили список
             val isNew = posts.size != adapter.itemCount
             adapter.submitList(posts) {
-                if (isNew) {
-                    binding.list.smoothScrollToPosition(0)
-                }
+                if (isNew) binding.list.smoothScrollToPosition(0)
             }
 
-            // состояния UI
+            // управление UI
             binding.progress.isVisible = state.loading
             binding.empty.isVisible = state.empty
             binding.errorMerge.root.isVisible = state.error
+
+            // остановить индикатор свайпа, когда загрузка закончилась
+            binding.swipeRefresh.isRefreshing = state.loading
         }
 
         // кнопка "повторить"

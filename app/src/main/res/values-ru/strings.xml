@@ -16,5 +16,7 @@
     <string name="add_post">Добавить пост</string>
     <string name="error_loading">Ошибка соединения</string>
     <string name="retry">Повторить</string>
+    <string name="enter_post_content">Введите текст поста</string>
+    <string name="empty_post_warning">Сообщение не может быть пустым</string>
 
 </resources>

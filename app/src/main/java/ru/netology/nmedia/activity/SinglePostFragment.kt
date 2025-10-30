@@ -1,20 +1,15 @@
 package ru.netology.nmedia.activity
 
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.appcompat.widget.PopupMenu
-import androidx.core.net.toUri
-import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import ru.netology.nmedia.R
-import ru.netology.nmedia.activity.NewPostFragment.Companion.textArgs
 import ru.netology.nmedia.databinding.FragmentSinglePostBinding
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.util.formatCount
@@ -59,17 +54,14 @@ class SinglePostFragment : Fragment() {
     private fun bindPost(post: Post) = with(binding.post) {
         authorName.text = post.author
         content.text = post.content
-        publishDate.text = post.published
+        publishDate.text = post.published.toString() // 👈 Long → String
 
-        // лайки
         likeIcon.isChecked = post.likedByMe
         likeIcon.text = formatCount(post.likes)
         likeIcon.setOnClickListener {
             viewModel.like(post.id)
         }
 
-        // шаринг
-        shareButton.text = formatCount(post.shares)
         shareButton.setOnClickListener {
             startActivity(
                 Intent.createChooser(
@@ -82,10 +74,6 @@ class SinglePostFragment : Fragment() {
             )
         }
 
-        // просмотры
-        viewButton.text = formatCount(post.views)
-
-        // меню (редактировать / удалить)
         menu.setOnClickListener { anchor ->
             PopupMenu(anchor.context, anchor).apply {
                 inflate(R.menu.post_options)
@@ -96,49 +84,16 @@ class SinglePostFragment : Fragment() {
                             findNavController().popBackStack()
                             true
                         }
-
                         R.id.edit -> {
                             viewModel.edit(post)
-                            findNavController().navigate(
-                                R.id.action_singlePostFragment_to_newPostFragment,
-                                Bundle().apply { textArgs = post.content }
-                            )
+                            viewModel.edit(post)
+                            findNavController().navigate(R.id.action_singlePostFragment_to_newPostFragment)
                             true
                         }
-
                         else -> false
                     }
                 }
             }.show()
-        }
-
-        // блок с видео
-        val hasVideo = !post.video.isNullOrBlank()
-        videoGroup.isVisible = hasVideo
-
-        if (hasVideo) {
-            val url = post.video!!
-            val openVideo: (View) -> Unit = {
-                try {
-                    startActivity(
-                        Intent(
-                            Intent.ACTION_VIEW,
-                            url.toUri()
-                        )
-                    )
-                } catch (_: ActivityNotFoundException) {
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.no_app_to_open),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-            videoGroup.setOnClickListener(openVideo)
-            btnPlay.setOnClickListener(openVideo)
-        } else {
-            videoGroup.setOnClickListener(null)
-            btnPlay.setOnClickListener(null)
         }
     }
 

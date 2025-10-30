@@ -11,17 +11,14 @@ import ru.netology.nmedia.repository.PostRepositoryNetworkImpl
 import ru.netology.nmedia.util.SingleLiveEvent
 import kotlin.concurrent.thread
 
-// пост-заглушка для редактирования/создания
+// Пост-заглушка
 private val empty = Post(
     id = 0,
-    author = "Me",
-    published = "now",
+    author = "Giorgi",
+    published = 0,
     content = "",
     likedByMe = false,
-    likes = 0,
-    shares = 0,
-    views = 0,
-    video = null,
+    likes = 0
 )
 
 class PostViewModel(application: Application) : AndroidViewModel(application) {
@@ -34,10 +31,8 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
 
     val edited = MutableLiveData(empty)
 
-    // 🔹 SingleLiveEvent для одноразовых событий (например, создание поста)
     private val _postCreated = SingleLiveEvent<Unit>()
-    val postCreated: LiveData<Unit>
-        get() = _postCreated
+    val postCreated: LiveData<Unit> get() = _postCreated
 
     init {
         loadPosts()
@@ -45,131 +40,61 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadPosts() {
         thread {
-            _data.postValue(
-                FeedModel(
-                    posts = _data.value?.posts ?: emptyList(),
-                    loading = true,
-                    error = false,
-                    empty = false,
-                )
-            )
-
+            _data.postValue(_data.value?.copy(loading = true))
             try {
                 val posts = repository.getAll()
-                _data.postValue(
-                    FeedModel(
-                        posts = posts,
-                        loading = false,
-                        error = false,
-                        empty = posts.isEmpty(),
-                    )
-                )
+                _data.postValue(FeedModel(posts = posts, empty = posts.isEmpty()))
             } catch (e: Exception) {
                 e.printStackTrace()
-                _data.postValue(
-                    FeedModel(
-                        posts = _data.value?.posts ?: emptyList(),
-                        loading = false,
-                        error = true,
-                        empty = false,
-                    )
-                )
+                _data.postValue(_data.value?.copy(error = true, loading = false))
             }
         }
     }
 
-    fun like(id: Long) {
-        thread {
-            try {
-                repository.likeById(id)
-                val posts = repository.getAll()
-                _data.postValue(
-                    FeedModel(
-                        posts = posts,
-                        loading = false,
-                        error = false,
-                        empty = posts.isEmpty(),
-                    )
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _data.postValue(
-                    _data.value?.copy(
-                        loading = false,
-                        error = true,
-                    )
-                )
-            }
+    fun like(id: Long) = thread {
+        try {
+            repository.likeById(id)
+            loadPosts()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
-    fun removeById(id: Long) {
-        thread {
-            try {
-                repository.removeById(id)
-                val posts = repository.getAll()
-                _data.postValue(
-                    FeedModel(
-                        posts = posts,
-                        loading = false,
-                        error = false,
-                        empty = posts.isEmpty(),
-                    )
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _data.postValue(
-                    _data.value?.copy(
-                        loading = false,
-                        error = true,
-                    )
-                )
-            }
+    fun removeById(id: Long) = thread {
+        try {
+            repository.removeById(id)
+            loadPosts()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
-    // 🔹 Обновлённый метод save() с вызовом SingleLiveEvent
     fun save() {
         val postToSave = edited.value ?: return
-
         thread {
             try {
                 repository.save(postToSave)
                 edited.postValue(empty)
                 clearDraft()
-
-                _postCreated.postValue(Unit) // 👈 уведомляем фрагмент один раз
-
-                val posts = repository.getAll()
-                _data.postValue(
-                    FeedModel(
-                        posts = posts,
-                        loading = false,
-                        error = false,
-                        empty = posts.isEmpty(),
-                    )
-                )
+                _postCreated.postValue(Unit)
+                loadPosts()
             } catch (e: Exception) {
                 e.printStackTrace()
-                _data.postValue(
-                    _data.value?.copy(
-                        loading = false,
-                        error = true,
-                    )
-                )
             }
         }
     }
 
     fun changeContent(content: String) {
         val text = content.trim()
-        val current = edited.value ?: return
+        val current = edited.value ?: empty
         if (text == current.content) return
+
+        // 👇 сохраняем старый id (если редактируем)
         edited.value = current.copy(content = text)
     }
 
     fun edit(post: Post) {
-        edited.value = post
+        edited.value = post // сохраняем весь пост
     }
 
     fun clearEdit() {
@@ -179,8 +104,4 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     fun saveDraft(text: String) = draftRepo.save(text)
     fun getDraft(): String = draftRepo.get()
     fun clearDraft() = draftRepo.clear()
-
-    fun retry() {
-        loadPosts()
-    }
 }

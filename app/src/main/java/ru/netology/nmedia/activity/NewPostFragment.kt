@@ -11,22 +11,13 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import ru.netology.nmedia.databinding.FragmentNewPostBinding
-import ru.netology.nmedia.util.StringArg
 import ru.netology.nmedia.viewmodel.PostViewModel
 
 class NewPostFragment : Fragment() {
 
-    companion object {
-        var Bundle.textArgs: String? by StringArg
-    }
-
     private val viewModel: PostViewModel by activityViewModels()
-
     private var _binding: FragmentNewPostBinding? = null
     private val binding get() = _binding!!
-
-    private val isEditMode: Boolean
-        get() = arguments?.textArgs != null
 
     private var suppressNextDraftSave = false
 
@@ -37,10 +28,12 @@ class NewPostFragment : Fragment() {
     ): View {
         _binding = FragmentNewPostBinding.inflate(inflater, container, false)
 
-        // если редактируем существующий пост — подставить текст в поле
-        arguments?.textArgs?.let(binding.edit::setText)
+        // ✅ Наблюдаем за редактируемым постом
+        viewModel.edited.observe(viewLifecycleOwner) { post ->
+            binding.edit.setText(post.content)
+        }
 
-        // Нажали "СОХРАНИТЬ"
+        // ✅ Кнопка "СОХРАНИТЬ"
         binding.save.setOnClickListener {
             val content = binding.edit.text?.toString()?.trim().orEmpty()
             if (content.isNotBlank()) {
@@ -49,7 +42,7 @@ class NewPostFragment : Fragment() {
                 viewModel.save()
                 hideKeyboard()
             } else {
-                // TODO: можно добавить Toast с сообщением "Пост не может быть пустым"
+                // Можно добавить Toast: "Пост не может быть пустым"
             }
         }
 
@@ -59,32 +52,25 @@ class NewPostFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // загрузка черновика, если поле пустое
-        if (!isEditMode && binding.edit.text.isNullOrBlank()) {
-            val draft = viewModel.getDraft()
-            if (draft.isNotBlank()) {
-                binding.edit.setText(draft)
-            }
+        // Если редактирования нет, подгружаем черновик
+        val draft = viewModel.getDraft()
+        if (draft.isNotBlank() && binding.edit.text.isNullOrBlank()) {
+            binding.edit.setText(draft)
         }
 
-        // ✅ Подписка на SingleLiveEvent (оповещение о создании поста)
+        // Переход назад после сохранения
         viewModel.postCreated.observe(viewLifecycleOwner) {
-            // когда ViewModel завершила сохранение — переходим назад
             viewModel.loadPosts()
             findNavController().navigateUp()
         }
 
-        // перехватываем системную "Назад"
+        // Обработка кнопки "Назад"
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    if (!isEditMode) {
-                        val text = binding.edit.text?.toString()?.trim().orEmpty()
-                        if (text.isNotEmpty()) {
-                            viewModel.saveDraft(text)
-                        }
-                    }
+                    val text = binding.edit.text?.toString()?.trim().orEmpty()
+                    if (text.isNotEmpty()) viewModel.saveDraft(text)
                     hideKeyboard()
                     findNavController().navigateUp()
                 }
@@ -95,15 +81,11 @@ class NewPostFragment : Fragment() {
     override fun onPause() {
         super.onPause()
 
-        if (!isEditMode) {
-            if (suppressNextDraftSave) {
-                suppressNextDraftSave = false
-            } else {
-                val text = binding.edit.text?.toString()?.trim().orEmpty()
-                if (text.isNotEmpty()) {
-                    viewModel.saveDraft(text)
-                }
-            }
+        if (!suppressNextDraftSave) {
+            val text = binding.edit.text?.toString()?.trim().orEmpty()
+            if (text.isNotEmpty()) viewModel.saveDraft(text)
+        } else {
+            suppressNextDraftSave = false
         }
     }
 

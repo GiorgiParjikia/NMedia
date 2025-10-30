@@ -25,5 +25,7 @@
     <string name="add_post">Add post</string>
     <string name="error_loading">Network error</string>
     <string name="retry">Retry</string>
+    <string name="enter_post_content">Enter post content...</string>
+    <string name="empty_post_warning">Post cannot be empty</string>
 
 </resources>

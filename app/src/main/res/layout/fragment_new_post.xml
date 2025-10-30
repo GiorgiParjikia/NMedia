@@ -5,30 +5,34 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".activity.NewPostActivity">
+    tools:context=".activity.NewPostFragment">
 
     <EditText
         android:id="@+id/edit"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@android:color/transparent"
-        android:gravity="start|top">
-
-    </EditText>
+        android:gravity="start|top"
+        android:hint="@string/enter_post_content"
+        android:autofillHints="text"
+        android:inputType="textMultiLine"
+        android:importantForAutofill="noExcludeDescendants"
+        android:imeOptions="actionDone" />
 
     <com.google.android.material.bottomappbar.BottomAppBar
         android:id="@+id/bottomAppBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        style="@style/Widget.MaterialComponents.BottomAppBar.Colored"/>
+        style="@style/Widget.MaterialComponents.BottomAppBar.Colored" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/save"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:srcCompat="@drawable/ic_add_24_dp"
-        app:layout_anchor="@id/bottomAppBar"
-        />
+    android:id="@+id/save"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    app:srcCompat="@drawable/ic_add_24_dp"
+    app:layout_anchor="@id/bottomAppBar"
+    android:contentDescription="@string/save" />
+
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
