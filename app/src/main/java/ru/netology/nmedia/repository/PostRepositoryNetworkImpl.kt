@@ -1,5 +1,6 @@
 package ru.netology.nmedia.repository
 
+import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import okhttp3.MediaType.Companion.toMediaType
@@ -9,7 +10,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import ru.netology.nmedia.dto.Post
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-import android.util.Log
 
 class PostRepositoryNetworkImpl : PostRepository {
 
@@ -33,31 +33,22 @@ class PostRepositoryNetworkImpl : PostRepository {
 
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("GET /api/posts failed: ${response.code}")
-
             val bodyString = response.body?.string()
                 ?: throw IOException("Response body is null")
-
             return gson.fromJson(bodyString, listType)
         }
     }
 
     // ====== 2. Лайк / дизлайк ======
-    override fun likeById(id: Long): Post {
-        // Сначала запрашиваем пост, чтобы узнать текущее состояние
-        val allPosts = getAll()
-        val current = allPosts.firstOrNull { it.id == id }
-            ?: throw IOException("Post with id=$id not found")
-
-        val isLiked = current.likedByMe
-        val method = if (isLiked) "DELETE" else "POST"
-        val action = if (isLiked) "unlike" else "like"
+    override fun likeById(id: Long, likedByMe: Boolean): Post {
+        val method = if (likedByMe) "DELETE" else "POST"
 
         val request = Request.Builder()
             .url("$BASE_URL/api/posts/$id/likes")
-            .method(method, if (isLiked) null else "".toRequestBody())
+            .method(method, if (likedByMe) null else "".toRequestBody())
             .build()
 
-        Log.i("NETWORK", "$method /api/posts/$id/likes — $action")
+        Log.i("NETWORK", "$method /api/posts/$id/likes")
 
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("$method /api/posts/$id/likes failed: ${response.code}")
@@ -66,7 +57,6 @@ class PostRepositoryNetworkImpl : PostRepository {
                 ?: throw IOException("Response body is null on likeById()")
 
             Log.i("NETWORK", "Response body: $bodyString")
-
             return gson.fromJson(bodyString, Post::class.java)
         }
     }

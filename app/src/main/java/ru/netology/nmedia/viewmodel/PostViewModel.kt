@@ -53,10 +53,19 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
 
     fun like(id: Long) = thread {
         try {
-            repository.likeById(id)
-            loadPosts()
+            val likedByMe = _data.value?.posts?.find { it.id == id }?.likedByMe ?: return@thread
+            val updatedPost = repository.likeById(id, likedByMe)
+
+            _data.postValue(
+                _data.value?.copy(
+                    posts = _data.value?.posts.orEmpty().map {
+                        if (it.id == id) updatedPost else it
+                    }
+                )
+            )
         } catch (e: Exception) {
             e.printStackTrace()
+            _data.postValue(_data.value?.copy(error = true))
         }
     }
 
