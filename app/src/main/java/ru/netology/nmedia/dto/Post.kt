@@ -3,8 +3,10 @@ package ru.netology.nmedia.dto
 data class Post(
     val id: Long,
     val author: String,
+    val authorAvatar: String?,
     val content: String,
-    val published: Long,       // 👈 именно Long, не String!
-    val likedByMe: Boolean = false,
-    val likes: Long = 0
+    val published: Long,
+    val likedByMe: Boolean,
+    val likes: Int = 0
+
 )

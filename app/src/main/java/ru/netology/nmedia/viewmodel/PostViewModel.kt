@@ -7,14 +7,17 @@ import androidx.lifecycle.MutableLiveData
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.model.FeedModel
 import ru.netology.nmedia.repository.DraftRepository
+import ru.netology.nmedia.repository.PostRepository
 import ru.netology.nmedia.repository.PostRepositoryNetworkImpl
 import ru.netology.nmedia.util.SingleLiveEvent
 import kotlin.concurrent.thread
 
 // Пост-заглушка
+// Пост-заглушка
 private val empty = Post(
     id = 0,
     author = "Giorgi",
+    authorAvatar = null,
     published = 0,
     content = "",
     likedByMe = false,
@@ -38,7 +41,8 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         loadPosts()
     }
 
-    fun loadPosts() {
+/*
+fun loadPosts() {
         thread {
             _data.postValue(_data.value?.copy(loading = true))
             try {
@@ -49,6 +53,20 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                 _data.postValue(_data.value?.copy(error = true, loading = false))
             }
         }
+    }
+ */
+
+    fun loadPosts() {
+        _data.postValue(_data.value?.copy(loading = true))
+        repository.getAllAsync(object : PostRepository.GetAllCallback {
+            override fun onSuccess(posts: List<Post>) {
+                _data.postValue(FeedModel(posts = posts, empty = posts.isEmpty()))
+            }
+
+            override fun onError(e: Exception) {
+                _data.postValue(FeedModel(error = true, loading = false))
+            }
+        })
     }
 
     fun like(id: Long) = thread {
