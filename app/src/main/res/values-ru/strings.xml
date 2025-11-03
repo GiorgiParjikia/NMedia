@@ -18,5 +18,6 @@
     <string name="retry">Повторить</string>
     <string name="enter_post_content">Введите текст поста</string>
     <string name="empty_post_warning">Сообщение не может быть пустым</string>
+    <string name="description_post_attachment">Изображение вложения</string>
 
 </resources>
