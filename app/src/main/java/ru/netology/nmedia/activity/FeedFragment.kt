@@ -67,12 +67,7 @@ class FeedFragment : Fragment() {
 
             override fun onOpenVideo(url: String) {
                 try {
-                    startActivity(
-                        Intent(
-                            Intent.ACTION_VIEW,
-                            url.toUri()
-                        )
-                    )
+                    startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                 } catch (_: ActivityNotFoundException) {
                     Toast.makeText(
                         requireContext(),
@@ -83,16 +78,12 @@ class FeedFragment : Fragment() {
             }
         })
 
-        // список
         binding.list.layoutManager = LinearLayoutManager(requireContext())
         binding.list.adapter = adapter
-
-        // свайп для обновления
         binding.swipeRefresh.setOnRefreshListener {
             viewModel.loadPosts()
         }
 
-        // наблюдаем за состоянием данных
         viewModel.data.observe(viewLifecycleOwner) { state ->
             val posts = state.posts
             val isNew = posts.size != adapter.itemCount
@@ -100,16 +91,13 @@ class FeedFragment : Fragment() {
                 if (isNew) binding.list.smoothScrollToPosition(0)
             }
 
-            // управление UI
             binding.progress.isVisible = state.loading
             binding.empty.isVisible = state.empty
-            binding.errorMerge.root.isVisible = state.error
-
-            // остановить индикатор свайпа, когда загрузка закончилась
+            binding.errorMerge.root.isVisible = state.error && !state.loading
+            binding.list.isVisible = !state.error
             binding.swipeRefresh.isRefreshing = state.loading
         }
 
-        // кнопка "повторить"
         binding.errorMerge.retry.setOnClickListener {
             viewModel.loadPosts()
         }

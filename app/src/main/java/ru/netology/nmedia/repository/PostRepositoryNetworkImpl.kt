@@ -13,62 +13,56 @@ class PostRepositoryNetworkImpl : PostRepository {
     override fun getAll(): List<Post> {
         val response = PostApi.service.getAll().execute()
         if (!response.isSuccessful) {
-            throw RuntimeException(response.errorBody()?.string() ?: "Response is not successful")
+            throw IOException("Server error: ${response.code()} ${response.message()}")
         }
-        return response.body() ?: throw RuntimeException("Body is null")
+        return response.body() ?: throw IOException("Response body is null")
     }
 
     override fun getAllAsync(callback: PostRepository.GetAllCallback) {
-        PostApi.service.getAll()
-            .enqueue(object : Callback<List<Post>> {
-                override fun onResponse(call: Call<List<Post>>, response: Response<List<Post>>) {
-                    if (!response.isSuccessful) {
-                        callback.onError(RuntimeException(response.errorBody()?.string()))
-                        return
-                    }
-                    val posts = response.body()
-                    if (posts == null) {
-                        callback.onError(RuntimeException("Body is null"))
-                        return
-                    }
-                    callback.onSuccess(posts)
+        PostApi.service.getAll().enqueue(object : Callback<List<Post>> {
+            override fun onResponse(call: Call<List<Post>>, response: Response<List<Post>>) {
+                if (!response.isSuccessful) {
+                    val errorMsg = "Ошибка загрузки: ${response.code()} ${response.message()}"
+                    Log.e("NETWORK", errorMsg)
+                    callback.onError(IOException(errorMsg))
+                    return
                 }
+                val posts = response.body()
+                if (posts == null) {
+                    callback.onError(IOException("Пустое тело ответа"))
+                    return
+                }
+                callback.onSuccess(posts)
+            }
 
-                override fun onFailure(call: Call<List<Post>>, t: Throwable) {
-                    callback.onError(t)
-                }
-            })
+            override fun onFailure(call: Call<List<Post>>, t: Throwable) {
+                Log.e("NETWORK", "Ошибка сети: ${t.message}", t)
+                callback.onError(t)
+            }
+        })
     }
 
     override fun likeById(id: Long, likedByMe: Boolean): Post {
-        val call = if (likedByMe) {
-            PostApi.service.dislikeById(id)
-        } else {
-            PostApi.service.likeById(id)
-        }
-
+        val call = if (likedByMe) PostApi.service.dislikeById(id) else PostApi.service.likeById(id)
         val response = call.execute()
         if (!response.isSuccessful) {
-            throw IOException("likeById failed: ${response.code()}")
+            throw IOException("Ошибка при лайке: ${response.code()} ${response.message()}")
         }
-        return response.body() ?: throw IOException("Response body is null on likeById()")
+        return response.body() ?: throw IOException("Пустой ответ при likeById()")
     }
 
     override fun removeById(id: Long) {
         val response = PostApi.service.deleteById(id).execute()
         if (!response.isSuccessful) {
-            Log.e("NETWORK", "DELETE /api/posts/$id failed: ${response.code()}")
-            throw IOException("Delete failed: ${response.code()}")
-        } else {
-            Log.i("NETWORK", "Post $id deleted successfully")
+            throw IOException("Ошибка удаления: ${response.code()} ${response.message()}")
         }
     }
 
     override fun save(post: Post): Post {
         val response = PostApi.service.save(post).execute()
         if (!response.isSuccessful) {
-            throw IOException("POST /api/posts failed: ${response.code()}")
+            throw IOException("Ошибка сохранения: ${response.code()} ${response.message()}")
         }
-        return response.body() ?: throw IOException("Response body is null on save()")
+        return response.body() ?: throw IOException("Пустой ответ при save()")
     }
 }
