@@ -10,12 +10,9 @@ import java.io.IOException
 
 class PostRepositoryNetworkImpl : PostRepository {
 
-    override fun getAll(): List<Post> {
-        val response = PostApi.service.getAll().execute()
-        if (!response.isSuccessful) {
-            throw IOException("Server error: ${response.code()} ${response.message()}")
-        }
-        return response.body() ?: throw IOException("Response body is null")
+    interface NetworkCallback<T> {
+        fun onSuccess(result: T)
+        fun onError(e: Throwable)
     }
 
     override fun getAllAsync(callback: PostRepository.GetAllCallback) {
@@ -27,6 +24,7 @@ class PostRepositoryNetworkImpl : PostRepository {
                     callback.onError(IOException(errorMsg))
                     return
                 }
+
                 val posts = response.body()
                 if (posts == null) {
                     callback.onError(IOException("Пустое тело ответа"))
@@ -42,27 +40,59 @@ class PostRepositoryNetworkImpl : PostRepository {
         })
     }
 
-    override fun likeById(id: Long, likedByMe: Boolean): Post {
+    fun likeByIdAsync(id: Long, likedByMe: Boolean, callback: NetworkCallback<Post>) {
         val call = if (likedByMe) PostApi.service.dislikeById(id) else PostApi.service.likeById(id)
-        val response = call.execute()
-        if (!response.isSuccessful) {
-            throw IOException("Ошибка при лайке: ${response.code()} ${response.message()}")
-        }
-        return response.body() ?: throw IOException("Пустой ответ при likeById()")
+        call.enqueue(object : Callback<Post> {
+            override fun onResponse(call: Call<Post>, response: Response<Post>) {
+                if (response.isSuccessful) {
+                    response.body()?.let { callback.onSuccess(it) }
+                        ?: callback.onError(IOException("Пустое тело при likeByIdAsync"))
+                } else {
+                    callback.onError(IOException("Ошибка при лайке: ${response.code()}"))
+                }
+            }
+
+            override fun onFailure(call: Call<Post>, t: Throwable) {
+                callback.onError(t)
+            }
+        })
     }
 
-    override fun removeById(id: Long) {
-        val response = PostApi.service.deleteById(id).execute()
-        if (!response.isSuccessful) {
-            throw IOException("Ошибка удаления: ${response.code()} ${response.message()}")
-        }
+    fun removeByIdAsync(id: Long, callback: NetworkCallback<Unit>) {
+        PostApi.service.deleteById(id).enqueue(object : Callback<Unit> {
+            override fun onResponse(call: Call<Unit>, response: Response<Unit>) {
+                if (response.isSuccessful) {
+                    callback.onSuccess(Unit)
+                } else {
+                    callback.onError(IOException("Ошибка удаления: ${response.code()}"))
+                }
+            }
+
+            override fun onFailure(call: Call<Unit>, t: Throwable) {
+                callback.onError(t)
+            }
+        })
     }
 
-    override fun save(post: Post): Post {
-        val response = PostApi.service.save(post).execute()
-        if (!response.isSuccessful) {
-            throw IOException("Ошибка сохранения: ${response.code()} ${response.message()}")
-        }
-        return response.body() ?: throw IOException("Пустой ответ при save()")
+    fun saveAsync(post: Post, callback: NetworkCallback<Post>) {
+        PostApi.service.save(post).enqueue(object : Callback<Post> {
+            override fun onResponse(call: Call<Post>, response: Response<Post>) {
+                if (response.isSuccessful) {
+                    response.body()?.let { callback.onSuccess(it) }
+                        ?: callback.onError(IOException("Пустое тело при saveAsync"))
+                } else {
+                    callback.onError(IOException("Ошибка сохранения: ${response.code()}"))
+                }
+            }
+
+            override fun onFailure(call: Call<Post>, t: Throwable) {
+                callback.onError(t)
+            }
+        })
     }
+
+    override fun getAll(): List<Post> = emptyList()
+    override fun likeById(id: Long, likedByMe: Boolean): Post = throw NotImplementedError()
+    override fun removeById(id: Long) = Unit
+    override fun save(post: Post): Post = throw NotImplementedError()
 }

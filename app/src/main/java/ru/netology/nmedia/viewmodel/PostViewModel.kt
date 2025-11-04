@@ -10,10 +10,7 @@ import ru.netology.nmedia.repository.DraftRepository
 import ru.netology.nmedia.repository.PostRepository
 import ru.netology.nmedia.repository.PostRepositoryNetworkImpl
 import ru.netology.nmedia.util.SingleLiveEvent
-import kotlin.concurrent.thread
 
-// Пост-заглушка
-// Пост-заглушка
 private val empty = Post(
     id = 0,
     author = "Giorgi",
@@ -41,93 +38,89 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         loadPosts()
     }
 
-/*
-fun loadPosts() {
-        thread {
-            _data.postValue(_data.value?.copy(loading = true))
-            try {
-                val posts = repository.getAll()
-                _data.postValue(FeedModel(posts = posts, empty = posts.isEmpty()))
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _data.postValue(_data.value?.copy(error = true, loading = false))
-            }
-        }
-    }
- */
-
+    // 🔹 Загрузка постов
     fun loadPosts() {
         _data.postValue(_data.value?.copy(loading = true))
         repository.getAllAsync(object : PostRepository.GetAllCallback {
             override fun onSuccess(posts: List<Post>) {
-                _data.value = FeedModel(posts = posts, empty = posts.isEmpty())
+                _data.postValue(FeedModel(posts = posts, empty = posts.isEmpty()))
             }
 
             override fun onError(e: Throwable) {
-                _data.value = FeedModel(error = true, loading = false)
+                _data.postValue(_data.value?.copy(error = true, loading = false))
             }
         })
     }
 
-    fun like(id: Long) = thread {
-        try {
-            val likedByMe = _data.value?.posts?.find { it.id == id }?.likedByMe ?: return@thread
-            val updatedPost = repository.likeById(id, likedByMe)
+    // 🔹 Лайк / дизлайк
+    fun like(id: Long) {
+        val likedByMe = _data.value?.posts?.find { it.id == id }?.likedByMe ?: return
 
-            _data.postValue(
-                _data.value?.copy(
-                    posts = _data.value?.posts.orEmpty().map {
-                        if (it.id == id) updatedPost else it
-                    }
+        repository.likeByIdAsync(id, likedByMe, object : PostRepositoryNetworkImpl.NetworkCallback<Post> {
+            override fun onSuccess(updatedPost: Post) {
+                _data.postValue(
+                    _data.value?.copy(
+                        posts = _data.value?.posts.orEmpty().map {
+                            if (it.id == id) updatedPost else it
+                        }
+                    )
                 )
-            )
-        } catch (e: Exception) {
-            e.printStackTrace()
-            _data.postValue(_data.value?.copy(error = true))
-        }
+            }
+
+            override fun onError(e: Throwable) {
+                _data.postValue(_data.value?.copy(error = true))
+            }
+        })
     }
 
-    fun removeById(id: Long) = thread {
-        try {
-            repository.removeById(id)
-            loadPosts()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+    // 🔹 Удаление поста
+    fun removeById(id: Long) {
+        repository.removeByIdAsync(id, object : PostRepositoryNetworkImpl.NetworkCallback<Unit> {
+            override fun onSuccess(result: Unit) {
+                loadPosts()
+            }
+
+            override fun onError(e: Throwable) {
+                _data.postValue(_data.value?.copy(error = true))
+            }
+        })
     }
 
+    // 🔹 Сохранение поста
     fun save() {
         val postToSave = edited.value ?: return
-        thread {
-            try {
-                repository.save(postToSave)
+
+        repository.saveAsync(postToSave, object : PostRepositoryNetworkImpl.NetworkCallback<Post> {
+            override fun onSuccess(result: Post) {
                 edited.postValue(empty)
                 clearDraft()
                 _postCreated.postValue(Unit)
                 loadPosts()
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
-        }
+
+            override fun onError(e: Throwable) {
+                _data.postValue(_data.value?.copy(error = true))
+            }
+        })
     }
 
+    // 🔹 Изменение текста поста
     fun changeContent(content: String) {
         val text = content.trim()
         val current = edited.value ?: empty
         if (text == current.content) return
-
-        // 👇 сохраняем старый id (если редактируем)
         edited.value = current.copy(content = text)
     }
 
     fun edit(post: Post) {
-        edited.value = post // сохраняем весь пост
+        edited.value = post
     }
 
     fun clearEdit() {
         edited.value = empty
     }
 
+    // 🔹 Черновики
     fun saveDraft(text: String) = draftRepo.save(text)
     fun getDraft(): String = draftRepo.get()
     fun clearDraft() = draftRepo.clear()
