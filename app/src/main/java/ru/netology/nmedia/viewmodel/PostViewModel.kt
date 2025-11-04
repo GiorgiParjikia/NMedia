@@ -60,11 +60,11 @@ fun loadPosts() {
         _data.postValue(_data.value?.copy(loading = true))
         repository.getAllAsync(object : PostRepository.GetAllCallback {
             override fun onSuccess(posts: List<Post>) {
-                _data.postValue(FeedModel(posts = posts, empty = posts.isEmpty()))
+                _data.value = FeedModel(posts = posts, empty = posts.isEmpty())
             }
 
-            override fun onError(e: Exception) {
-                _data.postValue(FeedModel(error = true, loading = false))
+            override fun onError(e: Throwable) {
+                _data.value = FeedModel(error = true, loading = false)
             }
         })
     }

@@ -1,17 +1,19 @@
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
-    id 'org.jetbrains.kotlin.kapt'
-    id 'com.google.gms.google-services'
-    id 'com.google.firebase.crashlytics'
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.kapt")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
-def gson_version               = "2.11.0"
-def nav_version                = "2.7.7"
-def room_version               = "2.6.1"
-def firebase_bom_version       = "33.4.0"
+def gson_version = "2.11.0"
+def nav_version = "2.7.7"
+def room_version = "2.6.1"
+def firebase_bom_version = "33.4.0"
 def play_services_base_version = "18.5.0"
-def okhttp_version             = "4.9.1"
+
+def okhttp_version = "4.12.0"
+def okhttp_logging_version = "4.12.0"
 
 android {
     namespace 'ru.netology.nmedia'
@@ -32,20 +34,27 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             manifestPlaceholders.usesCleartextTraffic = false
+            buildConfigField "String", "BASE_URL", "\"http://10.0.2.2:9999\""
         }
         debug {
             manifestPlaceholders.usesCleartextTraffic = true
+            buildConfigField "String", "BASE_URL", "\"http://10.0.2.2:9999\""
         }
     }
 
+
+
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = '11' }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
 
     buildFeatures {
         viewBinding true
+        buildConfig true
     }
 }
 
@@ -66,7 +75,7 @@ dependencies {
     implementation "com.google.code.gson:gson:$gson_version"
 
     implementation "androidx.room:room-runtime:$room_version"
-    kapt         "androidx.room:room-compiler:$room_version"
+    kapt "androidx.room:room-compiler:$room_version"
 
     implementation platform("com.google.firebase:firebase-bom:$firebase_bom_version")
     implementation "com.google.firebase:firebase-messaging-ktx"
@@ -74,14 +83,19 @@ dependencies {
     implementation "com.google.firebase:firebase-crashlytics-ktx"
     implementation "com.google.android.gms:play-services-base:$play_services_base_version"
 
-    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+    implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
+
+    // ✅ Совместимые версии OkHttp + Logging
     implementation "com.squareup.okhttp3:okhttp:$okhttp_version"
+    implementation "com.squareup.okhttp3:logging-interceptor:$okhttp_logging_version"
 
-    implementation("com.github.bumptech.glide:glide:4.16.0")
-    kapt("com.github.bumptech.glide:compiler:4.16.0")
+    // Glide
+    implementation "com.github.bumptech.glide:glide:4.16.0"
+    kapt "com.github.bumptech.glide:compiler:4.16.0"
 
-
-
+    // Retrofit
+    implementation "com.squareup.retrofit2:retrofit:2.9.0"
+    implementation "com.squareup.retrofit2:converter-gson:2.9.0"
 
     testImplementation libs.junit
     androidTestImplementation libs.androidx.junit

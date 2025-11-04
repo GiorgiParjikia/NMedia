@@ -12,6 +12,6 @@ interface PostRepository {
 
     interface GetAllCallback {
         fun onSuccess(posts: List<Post>)
-        fun onError(e: Exception)
+        fun onError(e: Throwable)
     }
 }
