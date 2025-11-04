@@ -10,12 +10,14 @@ import java.io.IOException
 
 class PostRepositoryNetworkImpl : PostRepository {
 
+    // 🔹 Универсальный колбэк для всех сетевых операций
     interface NetworkCallback<T> {
         fun onSuccess(result: T)
         fun onError(e: Throwable)
     }
 
-    override fun getAllAsync(callback: PostRepository.GetAllCallback) {
+    // 🔹 Асинхронная загрузка всех постов
+    fun getAllAsync(callback: NetworkCallback<List<Post>>) {
         PostApi.service.getAll().enqueue(object : Callback<List<Post>> {
             override fun onResponse(call: Call<List<Post>>, response: Response<List<Post>>) {
                 if (!response.isSuccessful) {
@@ -40,6 +42,7 @@ class PostRepositoryNetworkImpl : PostRepository {
         })
     }
 
+    // 🔹 Асинхронный лайк / дизлайк
     fun likeByIdAsync(id: Long, likedByMe: Boolean, callback: NetworkCallback<Post>) {
         val call = if (likedByMe) PostApi.service.dislikeById(id) else PostApi.service.likeById(id)
         call.enqueue(object : Callback<Post> {
@@ -58,6 +61,7 @@ class PostRepositoryNetworkImpl : PostRepository {
         })
     }
 
+    // 🔹 Асинхронное удаление поста
     fun removeByIdAsync(id: Long, callback: NetworkCallback<Unit>) {
         PostApi.service.deleteById(id).enqueue(object : Callback<Unit> {
             override fun onResponse(call: Call<Unit>, response: Response<Unit>) {
@@ -74,6 +78,7 @@ class PostRepositoryNetworkImpl : PostRepository {
         })
     }
 
+    // 🔹 Асинхронное сохранение поста
     fun saveAsync(post: Post, callback: NetworkCallback<Post>) {
         PostApi.service.save(post).enqueue(object : Callback<Post> {
             override fun onResponse(call: Call<Post>, response: Response<Post>) {
@@ -91,8 +96,20 @@ class PostRepositoryNetworkImpl : PostRepository {
         })
     }
 
+    // 🔸 Реализация обязательных методов интерфейса PostRepository (заглушки)
     override fun getAll(): List<Post> = emptyList()
-    override fun likeById(id: Long, likedByMe: Boolean): Post = throw NotImplementedError()
-    override fun removeById(id: Long) = Unit
-    override fun save(post: Post): Post = throw NotImplementedError()
+
+    override fun likeById(id: Long, likedByMe: Boolean): Post =
+        throw NotImplementedError("Используется асинхронный метод likeByIdAsync")
+
+    override fun removeById(id: Long) {
+        throw NotImplementedError("Используется асинхронный метод removeByIdAsync")
+    }
+
+    override fun save(post: Post): Post =
+        throw NotImplementedError("Используется асинхронный метод saveAsync")
+
+    override fun getAllAsync(callback: PostRepository.GetAllCallback) {
+        throw NotImplementedError("Используется асинхронный метод getAllAsync с NetworkCallback")
+    }
 }
