@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.core.view.isVisible
@@ -32,7 +33,6 @@ class FeedFragment : Fragment() {
         val binding = FragmentFeedBinding.inflate(inflater, container, false)
 
         val adapter = PostAdapter(object : OnInteractionListener {
-
             override fun onOpen(post: Post) {
                 findNavController().navigate(
                     R.id.action_feedFragment_to_singlePostFragment,
@@ -40,13 +40,9 @@ class FeedFragment : Fragment() {
                 )
             }
 
-            override fun onLike(post: Post) {
-                viewModel.like(post.id)
-            }
+            override fun onLike(post: Post) = viewModel.like(post.id)
 
-            override fun onRemove(post: Post) {
-                viewModel.removeById(post.id)
-            }
+            override fun onRemove(post: Post) = viewModel.removeById(post.id)
 
             override fun onShare(post: Post) {
                 startActivity(
@@ -80,9 +76,10 @@ class FeedFragment : Fragment() {
 
         binding.list.layoutManager = LinearLayoutManager(requireContext())
         binding.list.adapter = adapter
-        binding.swipeRefresh.setOnRefreshListener {
-            viewModel.loadPosts()
-        }
+        binding.swipeRefresh.setOnRefreshListener { viewModel.loadPosts() }
+
+        val errorView = binding.root.findViewById<View>(R.id.errorMerge)
+        val retryButton = errorView.findViewById<Button>(R.id.retry)
 
         viewModel.data.observe(viewLifecycleOwner) { state ->
             val posts = state.posts
@@ -91,18 +88,21 @@ class FeedFragment : Fragment() {
                 if (isNew) binding.list.smoothScrollToPosition(0)
             }
 
-            binding.progress.isVisible = state.loading
+            viewModel.state.observe(viewLifecycleOwner) { state ->
+                binding.progress.isVisible = state.loading
+                errorView.isVisible = state.error
+                binding.swipeRefresh.isRefreshing = state.refreshing
+            }
+
+            binding.swipeRefresh.setOnRefreshListener {
+                viewModel.refresh()
+            }
+
             binding.empty.isVisible = state.empty
-            binding.errorMerge.root.isVisible = state.error && !state.loading
-            binding.list.isVisible = !state.error
-            binding.swipeRefresh.isRefreshing = state.loading
         }
 
-        binding.errorMerge.retry.setOnClickListener {
-            viewModel.loadPosts()
-        }
+        retryButton.setOnClickListener { viewModel.loadPosts() }
 
-        // FAB "+"
         binding.fab.setOnClickListener {
             viewModel.clearEdit()
             findNavController().navigate(R.id.action_feedFragment_to_newPostFragment)

@@ -3,7 +3,6 @@ package ru.netology.nmedia.api
 import ru.netology.nmedia.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
-import retrofit2.Call
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.*
@@ -37,27 +36,27 @@ interface PostApiService {
 
     // ====== Получение всех постов ======
     @GET("posts")
-    fun getAll(): Call<List<Post>>
+    suspend fun getAll(): List<Post>
 
     // ====== Сохранение ======
     @POST("posts")
-    fun save(@Body post: Post): Call<Post>
+    suspend fun save(@Body post: Post): Post
 
     // ====== Удаление ======
     @DELETE("posts/{id}")
-    fun deleteById(@Path("id") id: Long): Call<Unit>
+    suspend fun deleteById(@Path("id") id: Long)
 
     // ====== Лайк ======
     @POST("posts/{id}/likes")
-    fun likeById(@Path("id") id: Long): Call<Post>
+    suspend fun likeById(@Path("id") id: Long): Post
 
     // ====== Дизлайк ======
     @DELETE("posts/{id}/likes")
-    fun dislikeById(@Path("id") id: Long): Call<Post>
+    suspend fun dislikeById(@Path("id") id: Long): Post
 }
 
 object PostApi {
-    val service: PostApiService by lazy {
+    val retrofitService: PostApiService by lazy {
         retrofit.create(PostApiService::class.java)
     }
 }

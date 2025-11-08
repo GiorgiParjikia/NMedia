@@ -32,7 +32,6 @@ abstract class AppDb : RoomDatabase() {
                 "app.db"
             )
                 .fallbackToDestructiveMigration()
-                .allowMainThreadQueries()
                 .fallbackToDestructiveMigration()
                 .build()
     }
