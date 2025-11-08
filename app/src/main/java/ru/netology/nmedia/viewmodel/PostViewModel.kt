@@ -1,12 +1,7 @@
 package ru.netology.nmedia.viewmodel
 
 import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.asFlow
-import androidx.lifecycle.asLiveData
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.*
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import ru.netology.nmedia.db.AppDb
@@ -35,10 +30,10 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     private val draftRepo = DraftRepository(application)
 
     private val _state = MutableLiveData(FeedModelState())
-    val state: LiveData<FeedModelState>
-        get() = _state
+    val state: LiveData<FeedModelState> get() = _state
+
     val data: LiveData<FeedModel> = repository.data.asFlow()
-        .combine(repository.isEmpty().asFlow(), :: FeedModel)
+        .combine(repository.isEmpty().asFlow(), ::FeedModel)
         .asLiveData()
 
     val edited = MutableLiveData(empty)
@@ -49,13 +44,13 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     init {
         loadPosts()
     }
+
     // 🔹 Загрузка постов
     fun loadPosts() {
         viewModelScope.launch {
             _state.postValue(_state.value?.copy(loading = true))
             try {
                 repository.getAllAsync()
-
                 _state.value = FeedModelState()
             } catch (_: Exception) {
                 _state.value = FeedModelState(error = true)
@@ -63,25 +58,39 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // 🔹 Лайк / дизлайк
     fun like(id: Long) {
-        // TODO:
+        viewModelScope.launch {
+            try {
+                repository.likeById(id)
+            } catch (_: Exception) {
+                _state.value = FeedModelState(error = true)
+            }
+        }
     }
 
+    // 🔹 Удаление поста
     fun removeById(id: Long) {
-        // TODO:
+        viewModelScope.launch {
+            try {
+                repository.removeById(id)
+            } catch (_: Exception) {
+                _state.value = FeedModelState(error = true)
+            }
+        }
     }
 
-    // 🔹 Сохранение поста (без повторного loadPosts)
+    // 🔹 Сохранение поста
     fun save() {
         viewModelScope.launch {
             edited.value?.let {
                 repository.save(it)
-
                 _postCreated.postValue(Unit)
                 edited.value = empty
             }
         }
     }
+
     // 🔹 Изменение текста поста
     fun changeContent(content: String) {
         val text = content.trim()
@@ -108,7 +117,6 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
             _state.postValue(_state.value?.copy(refreshing = true))
             try {
                 repository.getAllAsync()
-
                 _state.value = FeedModelState()
             } catch (_: Exception) {
                 _state.value = FeedModelState(error = true)

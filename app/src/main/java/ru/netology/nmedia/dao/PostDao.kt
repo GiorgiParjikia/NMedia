@@ -52,4 +52,8 @@ interface PostDao {
     // Удаление по ID
     @Query("DELETE FROM Post_Entity WHERE id = :id")
     suspend fun removeById(id: Long)
+
+    @Query("SELECT * FROM Post_Entity WHERE id = :id LIMIT 1")
+    suspend fun getPostById(id: Long): PostEntity?
+
 }
