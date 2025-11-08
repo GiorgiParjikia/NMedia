@@ -116,6 +116,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _state.postValue(_state.value?.copy(refreshing = true))
             try {
+                repository.retryUnsyncedPosts()
                 repository.getAllAsync()
                 _state.value = FeedModelState()
             } catch (_: Exception) {
@@ -123,4 +124,19 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+
+    // 🔹 Повторная отправка локальных (несинхронизированных) постов
+    fun retryUnsyncedPosts() {
+        viewModelScope.launch {
+            _state.postValue(_state.value?.copy(loading = true))
+            try {
+                repository.retryUnsyncedPosts()
+                _state.value = FeedModelState()
+            } catch (_: Exception) {
+                _state.value = FeedModelState(error = true)
+            }
+        }
+    }
+
 }

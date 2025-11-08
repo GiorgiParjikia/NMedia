@@ -32,6 +32,7 @@ class FeedFragment : Fragment() {
     ): View {
         val binding = FragmentFeedBinding.inflate(inflater, container, false)
 
+        // 🔹 Адаптер с обработкой кликов
         val adapter = PostAdapter(object : OnInteractionListener {
             override fun onOpen(post: Post) {
                 findNavController().navigate(
@@ -74,37 +75,40 @@ class FeedFragment : Fragment() {
             }
         })
 
+        // 🔹 Настройка списка
         binding.list.layoutManager = LinearLayoutManager(requireContext())
         binding.list.adapter = adapter
-        binding.swipeRefresh.setOnRefreshListener { viewModel.loadPosts() }
 
-        // Наблюдаем за постами
+        // 🔹 Обновление по свайпу
+        binding.swipeRefresh.setOnRefreshListener { viewModel.refresh() }
+
+        // 🔹 Наблюдаем за данными
         viewModel.data.observe(viewLifecycleOwner) { state ->
             val posts = state.posts
             val isNew = posts.size != adapter.itemCount
+
             adapter.submitList(posts) {
                 if (isNew) binding.list.smoothScrollToPosition(0)
-            }
-
-            // Состояние загрузки
-            viewModel.state.observe(viewLifecycleOwner) { state ->
-                binding.progress.isVisible = state.loading
-
-                if (state.error) {
-                    Snackbar.make(binding.root, R.string.error_loading, Snackbar.LENGTH_LONG)
-                        .setAction(R.string.retry) {
-                            viewModel.loadPosts()
-                        }
-                        .show()
-                }
-
-                binding.swipeRefresh.isRefreshing = state.refreshing
             }
 
             binding.empty.isVisible = state.empty
         }
 
-        // FAB "+"
+        // 🔹 Состояния загрузки / ошибок
+        viewModel.state.observe(viewLifecycleOwner) { state ->
+            binding.progress.isVisible = state.loading
+            binding.swipeRefresh.isRefreshing = state.refreshing
+
+            if (state.error) {
+                Snackbar.make(binding.root, R.string.error_loading, Snackbar.LENGTH_LONG)
+                    .setAction(R.string.retry) {
+                        viewModel.refresh() // при ошибке пробуем повторно
+                    }
+                    .show()
+            }
+        }
+
+        // 🔹 FAB "+"
         binding.fab.setOnClickListener {
             viewModel.clearEdit()
             findNavController().navigate(R.id.action_feedFragment_to_newPostFragment)
