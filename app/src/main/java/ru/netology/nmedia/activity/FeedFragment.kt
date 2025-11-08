@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.core.view.isVisible
@@ -14,6 +13,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.snackbar.Snackbar
 import ru.netology.nmedia.R
 import ru.netology.nmedia.adapter.OnInteractionListener
 import ru.netology.nmedia.adapter.PostAdapter
@@ -78,9 +78,7 @@ class FeedFragment : Fragment() {
         binding.list.adapter = adapter
         binding.swipeRefresh.setOnRefreshListener { viewModel.loadPosts() }
 
-        val errorView = binding.root.findViewById<View>(R.id.errorMerge)
-        val retryButton = errorView.findViewById<Button>(R.id.retry)
-
+        // Наблюдаем за постами
         viewModel.data.observe(viewLifecycleOwner) { state ->
             val posts = state.posts
             val isNew = posts.size != adapter.itemCount
@@ -88,21 +86,25 @@ class FeedFragment : Fragment() {
                 if (isNew) binding.list.smoothScrollToPosition(0)
             }
 
+            // Состояние загрузки
             viewModel.state.observe(viewLifecycleOwner) { state ->
                 binding.progress.isVisible = state.loading
-                errorView.isVisible = state.error
-                binding.swipeRefresh.isRefreshing = state.refreshing
-            }
 
-            binding.swipeRefresh.setOnRefreshListener {
-                viewModel.refresh()
+                if (state.error) {
+                    Snackbar.make(binding.root, R.string.error_loading, Snackbar.LENGTH_LONG)
+                        .setAction(R.string.retry) {
+                            viewModel.loadPosts()
+                        }
+                        .show()
+                }
+
+                binding.swipeRefresh.isRefreshing = state.refreshing
             }
 
             binding.empty.isVisible = state.empty
         }
 
-        retryButton.setOnClickListener { viewModel.loadPosts() }
-
+        // FAB "+"
         binding.fab.setOnClickListener {
             viewModel.clearEdit()
             findNavController().navigate(R.id.action_feedFragment_to_newPostFragment)
