@@ -52,3 +52,7 @@ interface PostDao {
     @Query("UPDATE Post_Entity SET isLocal = 0 WHERE id = :id")
     suspend fun markSynced(id: Long)
 }
+
+
+
+// Final version after review feedback
