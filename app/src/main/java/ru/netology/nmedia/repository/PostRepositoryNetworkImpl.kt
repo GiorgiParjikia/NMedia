@@ -40,37 +40,28 @@ class PostRepositoryNetworkImpl(
         }
     }
 
-    // ===== Лайк / дизлайк =====
+    // ===== Лайк / дизлайк (упрощённая версия) =====
     override suspend fun likeById(id: Long): Post {
-        val post = dao.getPostById(id)?.toDto()
-            ?: throw RuntimeException("Post not found")
-
-        val liked = !post.likedByMe
-        val updated = post.copy(
-            likedByMe = liked,
-            likes = post.likes + if (liked) 1 else -1
-        )
-
-        dao.insert(PostEntity.fromDto(updated)) // обновляем локально
+        // обновляем локально
+        dao.likeById(id)
 
         return try {
-            val response = if (liked) {
+            val response = if (dao.getPostById(id)?.likedByMe == false) {
                 PostApi.retrofitService.likeById(id)
             } else {
                 PostApi.retrofitService.dislikeById(id)
             }
-            dao.insert(PostEntity.fromDto(response))
             response
         } catch (e: IOException) {
             // при ошибке сети откатываем изменения
-            dao.insert(PostEntity.fromDto(post))
+            dao.likeById(id)
             throw e
         }
     }
 
     // ===== Сохранение (оптимистичное) =====
     override suspend fun save(post: Post): Post {
-        // 1️⃣ сохраняем локально, чтобы сразу увидеть пост
+        // 1 сохраняем локально (с нулевым id, чтобы сервер создал новый)
         val localEntity = PostEntity.fromDto(
             post.copy(
                 id = 0,
@@ -80,13 +71,14 @@ class PostRepositoryNetworkImpl(
         )
         dao.insert(localEntity)
 
-        // 2️⃣ пытаемся отправить на сервер
+        // 2 пытаемся отправить на сервер
         return try {
             val saved = PostApi.retrofitService.save(post)
+            dao.removeById(localEntity.id) // удаляем локальную копию
             dao.insert(PostEntity.fromDto(saved, isLocal = false))
             saved
         } catch (e: IOException) {
-            // 3️⃣ сеть недоступна — просто остаётся в локальной БД
+            // 3 сеть недоступна — просто остаётся в локальной БД
             e.printStackTrace()
             post
         }
@@ -97,7 +89,9 @@ class PostRepositoryNetworkImpl(
         val unsynced = dao.getUnsynced()
         for (entity in unsynced) {
             try {
-                val response = PostApi.retrofitService.save(entity.toDto())
+                val dto = entity.toDto().copy(id = 0) // id назначит сервер
+                val response = PostApi.retrofitService.save(dto)
+                dao.removeById(entity.id) // удаляем локальную копию
                 dao.insert(PostEntity.fromDto(response, isLocal = false))
             } catch (_: IOException) {
                 // сети всё ещё нет — пропускаем

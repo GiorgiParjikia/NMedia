@@ -2,7 +2,6 @@ package ru.netology.nmedia.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.*
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import ru.netology.nmedia.db.AppDb
 import ru.netology.nmedia.dto.Post
@@ -32,9 +31,24 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     private val _state = MutableLiveData(FeedModelState())
     val state: LiveData<FeedModelState> get() = _state
 
-    val data: LiveData<FeedModel> = repository.data.asFlow()
-        .combine(repository.isEmpty().asFlow(), ::FeedModel)
-        .asLiveData()
+    // 🔹 Заменено с Flow на MediatorLiveData
+    val data = MediatorLiveData<FeedModel>().apply {
+        var posts: List<Post> = emptyList()
+        var isEmpty = true
+
+        fun update() {
+            value = FeedModel(posts, isEmpty)
+        }
+
+        addSource(repository.data) {
+            posts = it
+            update()
+        }
+        addSource(repository.isEmpty()) {
+            isEmpty = it
+            update()
+        }
+    }
 
     val edited = MutableLiveData(empty)
 
@@ -112,6 +126,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     fun getDraft(): String = draftRepo.get()
     fun clearDraft() = draftRepo.clear()
 
+    // 🔹 Обновление (refresh)
     fun refresh() {
         viewModelScope.launch {
             _state.postValue(_state.value?.copy(refreshing = true))
@@ -125,18 +140,14 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-
     // 🔹 Повторная отправка локальных (несинхронизированных) постов
     fun retryUnsyncedPosts() {
         viewModelScope.launch {
-            _state.postValue(_state.value?.copy(loading = true))
             try {
                 repository.retryUnsyncedPosts()
-                _state.value = FeedModelState()
             } catch (_: Exception) {
                 _state.value = FeedModelState(error = true)
             }
         }
     }
-
 }
