@@ -9,7 +9,7 @@ import ru.netology.nmedia.entity.PostEntity
 
 @Database(
     entities = [PostEntity::class],
-    version = 1,
+    version = 2, // 🔹 увеличил версию (было 1)
     exportSchema = false
 )
 abstract class AppDb : RoomDatabase() {
@@ -31,9 +31,7 @@ abstract class AppDb : RoomDatabase() {
                 AppDb::class.java,
                 "app.db"
             )
-                .fallbackToDestructiveMigration()
-                .allowMainThreadQueries()
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration() // 🔹 оставляем один раз
                 .build()
     }
 }

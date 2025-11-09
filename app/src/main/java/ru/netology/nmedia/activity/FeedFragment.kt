@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.snackbar.Snackbar
 import ru.netology.nmedia.R
 import ru.netology.nmedia.adapter.OnInteractionListener
 import ru.netology.nmedia.adapter.PostAdapter
@@ -31,8 +32,8 @@ class FeedFragment : Fragment() {
     ): View {
         val binding = FragmentFeedBinding.inflate(inflater, container, false)
 
+        // 🔹 Адаптер с обработкой кликов
         val adapter = PostAdapter(object : OnInteractionListener {
-
             override fun onOpen(post: Post) {
                 findNavController().navigate(
                     R.id.action_feedFragment_to_singlePostFragment,
@@ -40,13 +41,9 @@ class FeedFragment : Fragment() {
                 )
             }
 
-            override fun onLike(post: Post) {
-                viewModel.like(post.id)
-            }
+            override fun onLike(post: Post) = viewModel.like(post.id)
 
-            override fun onRemove(post: Post) {
-                viewModel.removeById(post.id)
-            }
+            override fun onRemove(post: Post) = viewModel.removeById(post.id)
 
             override fun onShare(post: Post) {
                 startActivity(
@@ -67,12 +64,7 @@ class FeedFragment : Fragment() {
 
             override fun onOpenVideo(url: String) {
                 try {
-                    startActivity(
-                        Intent(
-                            Intent.ACTION_VIEW,
-                            url.toUri()
-                        )
-                    )
+                    startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                 } catch (_: ActivityNotFoundException) {
                     Toast.makeText(
                         requireContext(),
@@ -83,38 +75,40 @@ class FeedFragment : Fragment() {
             }
         })
 
-        // список
+        // 🔹 Настройка списка
         binding.list.layoutManager = LinearLayoutManager(requireContext())
         binding.list.adapter = adapter
 
-        // свайп для обновления
-        binding.swipeRefresh.setOnRefreshListener {
-            viewModel.loadPosts()
-        }
+        // 🔹 Обновление по свайпу
+        binding.swipeRefresh.setOnRefreshListener { viewModel.refresh() }
 
-        // наблюдаем за состоянием данных
+        // 🔹 Наблюдаем за данными
         viewModel.data.observe(viewLifecycleOwner) { state ->
             val posts = state.posts
             val isNew = posts.size != adapter.itemCount
+
             adapter.submitList(posts) {
                 if (isNew) binding.list.smoothScrollToPosition(0)
             }
 
-            // управление UI
-            binding.progress.isVisible = state.loading
             binding.empty.isVisible = state.empty
-            binding.errorMerge.root.isVisible = state.error
-
-            // остановить индикатор свайпа, когда загрузка закончилась
-            binding.swipeRefresh.isRefreshing = state.loading
         }
 
-        // кнопка "повторить"
-        binding.errorMerge.retry.setOnClickListener {
-            viewModel.loadPosts()
+        // 🔹 Состояния загрузки / ошибок
+        viewModel.state.observe(viewLifecycleOwner) { state ->
+            binding.progress.isVisible = state.loading
+            binding.swipeRefresh.isRefreshing = state.refreshing
+
+            if (state.error) {
+                Snackbar.make(binding.root, R.string.error_loading, Snackbar.LENGTH_LONG)
+                    .setAction(R.string.retry) {
+                        viewModel.refresh() // при ошибке пробуем повторно
+                    }
+                    .show()
+            }
         }
 
-        // FAB "+"
+        // 🔹 FAB "+"
         binding.fab.setOnClickListener {
             viewModel.clearEdit()
             findNavController().navigate(R.id.action_feedFragment_to_newPostFragment)

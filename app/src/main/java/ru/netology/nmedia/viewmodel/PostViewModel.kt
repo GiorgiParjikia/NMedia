@@ -1,19 +1,16 @@
 package ru.netology.nmedia.viewmodel
 
 import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.*
+import kotlinx.coroutines.launch
+import ru.netology.nmedia.db.AppDb
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.model.FeedModel
+import ru.netology.nmedia.model.FeedModelState
 import ru.netology.nmedia.repository.DraftRepository
-import ru.netology.nmedia.repository.PostRepository
 import ru.netology.nmedia.repository.PostRepositoryNetworkImpl
 import ru.netology.nmedia.util.SingleLiveEvent
-import kotlin.concurrent.thread
 
-// Пост-заглушка
-// Пост-заглушка
 private val empty = Post(
     id = 0,
     author = "Giorgi",
@@ -26,11 +23,32 @@ private val empty = Post(
 
 class PostViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = PostRepositoryNetworkImpl()
+    private val repository = PostRepositoryNetworkImpl(
+        AppDb.getInstance(application).postDao()
+    )
     private val draftRepo = DraftRepository(application)
 
-    private val _data = MutableLiveData(FeedModel())
-    val data: LiveData<FeedModel> get() = _data
+    private val _state = MutableLiveData(FeedModelState())
+    val state: LiveData<FeedModelState> get() = _state
+
+    // 🔹 Заменено с Flow на MediatorLiveData
+    val data = MediatorLiveData<FeedModel>().apply {
+        var posts: List<Post> = emptyList()
+        var isEmpty = true
+
+        fun update() {
+            value = FeedModel(posts, isEmpty)
+        }
+
+        addSource(repository.data) {
+            posts = it
+            update()
+        }
+        addSource(repository.isEmpty()) {
+            isEmpty = it
+            update()
+        }
+    }
 
     val edited = MutableLiveData(empty)
 
@@ -41,94 +59,95 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         loadPosts()
     }
 
-/*
-fun loadPosts() {
-        thread {
-            _data.postValue(_data.value?.copy(loading = true))
-            try {
-                val posts = repository.getAll()
-                _data.postValue(FeedModel(posts = posts, empty = posts.isEmpty()))
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _data.postValue(_data.value?.copy(error = true, loading = false))
-            }
-        }
-    }
- */
-
+    // 🔹 Загрузка постов
     fun loadPosts() {
-        _data.postValue(_data.value?.copy(loading = true))
-        repository.getAllAsync(object : PostRepository.GetAllCallback {
-            override fun onSuccess(posts: List<Post>) {
-                _data.value = FeedModel(posts = posts, empty = posts.isEmpty())
-            }
-
-            override fun onError(e: Throwable) {
-                _data.value = FeedModel(error = true, loading = false)
-            }
-        })
-    }
-
-    fun like(id: Long) = thread {
-        try {
-            val likedByMe = _data.value?.posts?.find { it.id == id }?.likedByMe ?: return@thread
-            val updatedPost = repository.likeById(id, likedByMe)
-
-            _data.postValue(
-                _data.value?.copy(
-                    posts = _data.value?.posts.orEmpty().map {
-                        if (it.id == id) updatedPost else it
-                    }
-                )
-            )
-        } catch (e: Exception) {
-            e.printStackTrace()
-            _data.postValue(_data.value?.copy(error = true))
-        }
-    }
-
-    fun removeById(id: Long) = thread {
-        try {
-            repository.removeById(id)
-            loadPosts()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    fun save() {
-        val postToSave = edited.value ?: return
-        thread {
+        viewModelScope.launch {
+            _state.postValue(_state.value?.copy(loading = true))
             try {
-                repository.save(postToSave)
-                edited.postValue(empty)
-                clearDraft()
-                _postCreated.postValue(Unit)
-                loadPosts()
-            } catch (e: Exception) {
-                e.printStackTrace()
+                repository.getAllAsync()
+                _state.value = FeedModelState()
+            } catch (_: Exception) {
+                _state.value = FeedModelState(error = true)
             }
         }
     }
 
+    // 🔹 Лайк / дизлайк
+    fun like(id: Long) {
+        viewModelScope.launch {
+            try {
+                repository.likeById(id)
+            } catch (_: Exception) {
+                _state.value = FeedModelState(error = true)
+            }
+        }
+    }
+
+    // 🔹 Удаление поста
+    fun removeById(id: Long) {
+        viewModelScope.launch {
+            try {
+                repository.removeById(id)
+            } catch (_: Exception) {
+                _state.value = FeedModelState(error = true)
+            }
+        }
+    }
+
+    // 🔹 Сохранение поста
+    fun save() {
+        viewModelScope.launch {
+            edited.value?.let {
+                repository.save(it)
+                _postCreated.postValue(Unit)
+                edited.value = empty
+            }
+        }
+    }
+
+    // 🔹 Изменение текста поста
     fun changeContent(content: String) {
         val text = content.trim()
         val current = edited.value ?: empty
         if (text == current.content) return
-
-        // 👇 сохраняем старый id (если редактируем)
         edited.value = current.copy(content = text)
     }
 
     fun edit(post: Post) {
-        edited.value = post // сохраняем весь пост
+        edited.value = post
     }
 
     fun clearEdit() {
         edited.value = empty
     }
 
+    // 🔹 Черновики
     fun saveDraft(text: String) = draftRepo.save(text)
     fun getDraft(): String = draftRepo.get()
     fun clearDraft() = draftRepo.clear()
+
+    // 🔹 Обновление (refresh)
+    fun refresh() {
+        viewModelScope.launch {
+            _state.postValue(_state.value?.copy(refreshing = true))
+            try {
+                repository.retryUnsyncedPosts()
+                repository.getAllAsync()
+                _state.value = FeedModelState()
+            } catch (_: Exception) {
+                _state.value = FeedModelState(error = true)
+            }
+        }
+    }
+
+    // 🔹 Повторная отправка локальных (несинхронизированных) постов
+    fun retryUnsyncedPosts() {
+        viewModelScope.launch {
+            try {
+                repository.retryUnsyncedPosts()
+            } catch (_: Exception) {
+                _state.value = FeedModelState(error = true)
+            }
+        }
+    }
 }
