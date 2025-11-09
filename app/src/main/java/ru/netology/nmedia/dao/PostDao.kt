@@ -14,6 +14,10 @@ interface PostDao {
     @Query("SELECT COUNT(*) = 0 FROM Post_Entity")
     fun isEmpty(): Flow<Boolean>
 
+    // Получение максимального ID (нужно для getNewer)
+    @Query("SELECT MAX(id) FROM Post_Entity")
+    suspend fun getLatestId(): Long?
+
     // ===== Вставка / обновление =====
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(post: PostEntity)
@@ -40,15 +44,15 @@ interface PostDao {
     )
     suspend fun likeById(id: Long)
 
-    // ===== Получить конкретный пост (для like/remove) =====
+    // ===== Получить конкретный пост =====
     @Query("SELECT * FROM Post_Entity WHERE id = :id LIMIT 1")
     suspend fun getPostById(id: Long): PostEntity?
 
-    // ===== Получить все локальные посты (ещё не отправленные на сервер) =====
+    // ===== Получить локальные посты (ещё не отправленные) =====
     @Query("SELECT * FROM Post_Entity WHERE isLocal = 1")
     suspend fun getUnsynced(): List<PostEntity>
 
-    // ===== Обновить статус (после успешной синхронизации) =====
+    // ===== Обновить статус после синхронизации =====
     @Query("UPDATE Post_Entity SET isLocal = 0 WHERE id = :id")
     suspend fun markSynced(id: Long)
 }

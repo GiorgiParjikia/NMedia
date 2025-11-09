@@ -19,13 +19,16 @@ class PostRepositoryNetworkImpl(
         list.map { it.toDto() }
     }
 
-    override fun getNewer(id: Long): Flow<Int> = flow {
+    // ==================================================
+    // Получение новых постов после последнего ID в БД
+    // ==================================================
+    override fun getNewer(lastSeenId: Long): Flow<Int> = flow {
         while (true) {
             delay(10_000)
 
             try {
-                // API возвращает List<Post>
-                val posts = PostApi.retrofitService.getNewer(id)
+                val latestId = dao.getLatestId() ?: 0L
+                val posts = PostApi.retrofitService.getNewer(latestId)
 
                 if (posts.isNotEmpty()) {
                     dao.insert(posts.map(PostEntity::fromDto))
@@ -40,11 +43,17 @@ class PostRepositoryNetworkImpl(
 
     override fun isEmpty() = dao.isEmpty()
 
+    // ==================================================
+    // Получение всех постов
+    // ==================================================
     override suspend fun getAllAsync() {
         val posts = PostApi.retrofitService.getAll()
         dao.insert(posts.map(PostEntity::fromDto))
     }
 
+    // ==================================================
+    // Удаление поста
+    // ==================================================
     override suspend fun removeById(id: Long) {
         val postToRemove = dao.getPostById(id)?.toDto()
         dao.removeById(id)
@@ -59,6 +68,9 @@ class PostRepositoryNetworkImpl(
         }
     }
 
+    // ==================================================
+    // Лайк / дизлайк
+    // ==================================================
     override suspend fun likeById(id: Long): Post {
         val post = dao.getPostById(id)?.toDto()
             ?: throw RuntimeException("Post not found")
@@ -85,33 +97,47 @@ class PostRepositoryNetworkImpl(
         }
     }
 
+    // ==================================================
+    // Сохранение поста (онлайн + оффлайн)
+    // ==================================================
     override suspend fun save(post: Post): Post {
-        val tmp = PostEntity.fromDto(
-            post.copy(id = 0, published = System.currentTimeMillis()),
-            isLocal = true
-        )
-
-        dao.insert(tmp)
-
         return try {
             val saved = PostApi.retrofitService.save(post)
+
             dao.insert(PostEntity.fromDto(saved, isLocal = false))
+
             saved
         } catch (e: IOException) {
-            post
+            // сохраняем оффлайн с уникальным большим ID
+            val local = post.copy(
+                id = System.currentTimeMillis(),
+                published = System.currentTimeMillis()
+            )
+
+            dao.insert(PostEntity.fromDto(local, isLocal = true))
+
+            local
         }
     }
 
+    // ==================================================
+    // Повторная отправка локальных постов
+    // ==================================================
     suspend fun retryUnsyncedPosts() {
         val unsynced = dao.getUnsynced()
+
         for (post in unsynced) {
             try {
                 val saved = PostApi.retrofitService.save(post.toDto())
                 dao.insert(PostEntity.fromDto(saved, isLocal = false))
-            } catch (_: IOException) {}
+            } catch (_: IOException) {
+            }
         }
     }
 
+    // ==================================================
+    // Вытягивание всех постов (для обратной совместимости)
+    // ==================================================
     override suspend fun getAll() {
         val posts = PostApi.retrofitService.getAll()
         dao.insert(posts.map(PostEntity::fromDto))

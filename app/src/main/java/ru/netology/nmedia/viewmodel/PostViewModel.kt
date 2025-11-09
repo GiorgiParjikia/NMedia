@@ -29,24 +29,56 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = PostRepositoryNetworkImpl(
         AppDb.getInstance(application).postDao()
     )
+
     private val draftRepo = DraftRepository(application)
 
     private val _state = MutableLiveData(FeedModelState())
     val state: LiveData<FeedModelState> get() = _state
 
-    // 🔹 Основной фид
+    // Основной фид (Flow → LiveData)
     val data: LiveData<FeedModel> = repository.data
-        .map { list: List<Post> -> FeedModel(list, list.isEmpty()) }
-        .catch { it.printStackTrace() }
+        .map { posts -> FeedModel(posts, posts.isEmpty()) }
+        .catch {
+            it.printStackTrace()
+            _state.postValue(FeedModelState(error = true))
+        }
         .asLiveData(Dispatchers.Default)
 
-    // 🔹 Количество новых постов
-    val newerCount = data.switchMap {
-        repository.getNewer(it.posts.firstOrNull()?.id ?: 0L)
-            .catch {
+    // Счётчик новых постов
+    private val _newerCount = MutableLiveData(0)
+    val newerCount: LiveData<Int> get() = _newerCount
+
+    init {
+        loadPosts()
+
+        // Реактивное отслеживание новых постов
+        data.switchMap { feed ->
+            val lastSeenId = feed.posts.firstOrNull()?.id ?: 0L
+
+            repository.getNewer(lastSeenId)
+                .catch {
+                    _state.postValue(FeedModelState(error = true))
+                }
+                .asLiveData()
+        }.observeForever { count ->
+            if (count != null && count > 0) {
+                // главное исправление — накапливаем число
+                val old = _newerCount.value ?: 0
+                _newerCount.postValue(old + count)
+            }
+        }
+    }
+
+    // Нажатие "Показать новые"
+    fun showNewPosts() {
+        viewModelScope.launch {
+            try {
+                repository.getAllAsync()
+                _newerCount.postValue(0)
+            } catch (_: Exception) {
                 _state.postValue(FeedModelState(error = true))
             }
-            .asLiveData()
+        }
     }
 
     val edited = MutableLiveData(empty)
@@ -54,11 +86,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     private val _postCreated = SingleLiveEvent<Unit>()
     val postCreated: LiveData<Unit> get() = _postCreated
 
-    init {
-        loadPosts()
-    }
-
-    // ✅ Загрузка постов
+    // Загрузка постов
     fun loadPosts() {
         viewModelScope.launch {
             _state.postValue(_state.value?.copy(loading = true))
@@ -71,7 +99,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ✅ Лайк / дизлайк
+    // Лайк
     fun like(id: Long) {
         viewModelScope.launch {
             try {
@@ -82,7 +110,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ✅ Удаление поста
+    // Удаление
     fun removeById(id: Long) {
         viewModelScope.launch {
             try {
@@ -93,7 +121,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ✅ Сохранение поста
+    // Сохранение
     fun save() {
         viewModelScope.launch {
             edited.value?.let {
@@ -104,7 +132,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ✅ Изменение текста
+    // Изменение контента
     fun changeContent(content: String) {
         val text = content.trim()
         val current = edited.value ?: empty
@@ -120,12 +148,12 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         edited.value = empty
     }
 
-    // ✅ Черновики
+    // Черновики
     fun saveDraft(text: String) = draftRepo.save(text)
     fun getDraft(): String = draftRepo.get()
     fun clearDraft() = draftRepo.clear()
 
-    // ✅ Обновление
+    // Pull-to-refresh
     fun refresh() {
         viewModelScope.launch {
             _state.postValue(_state.value?.copy(refreshing = true))
@@ -139,7 +167,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ✅ Повторная отправка несинхронизированных постов
+    // Повторная отправка офлайн-постов
     fun retryUnsyncedPosts() {
         viewModelScope.launch {
             _state.postValue(_state.value?.copy(loading = true))

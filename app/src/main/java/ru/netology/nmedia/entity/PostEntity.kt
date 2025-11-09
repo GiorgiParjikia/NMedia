@@ -8,8 +8,9 @@ import ru.netology.nmedia.dto.Post
 
 @Entity(tableName = "Post_Entity")
 data class PostEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long,                     // локальный ID (генерируется Room)
+    @PrimaryKey(autoGenerate = false)
+    val id: Long,
+
     val author: String,
     val authorAvatar: String?,
     val content: String,
@@ -17,16 +18,14 @@ data class PostEntity(
     val likedByMe: Boolean,
     val likes: Int,
 
-    // 🔹 Вложенное поле для картинки/видео
+    // Вложенный объект Attachment
     @Embedded(prefix = "attachment_")
     val attachment: AttachmentEmbeddable? = null,
 
-    // 🔹 Новые поля для задачи №2
-    val isLocal: Boolean = false,     // true — пост создан офлайн, ещё не отправлен на сервер
-    val localId: Long? = null         // вспомогательный ID, связывающий локальную и серверную версии
+    // Для офлайн-режима (задача №2)
+    val isLocal: Boolean = false,
+    val localId: Long? = null,
 ) {
-
-    // Преобразуем Entity → DTO
     fun toDto(): Post = Post(
         id = id,
         author = author,
@@ -35,11 +34,10 @@ data class PostEntity(
         published = published,
         likedByMe = likedByMe,
         likes = likes,
-        attachment = attachment?.toDto()
+        attachment = attachment?.toDto(),
     )
 
     companion object {
-        // Преобразуем DTO → Entity
         fun fromDto(dto: Post, isLocal: Boolean = false, localId: Long? = null): PostEntity =
             PostEntity(
                 id = dto.id,
@@ -51,26 +49,28 @@ data class PostEntity(
                 likes = dto.likes,
                 attachment = AttachmentEmbeddable.fromDto(dto.attachment),
                 isLocal = isLocal,
-                localId = localId
+                localId = localId,
             )
     }
 }
 
-// ====== Attachment Embeddable ======
+// =====================
+// Attachment Embeddable
+// =====================
 data class AttachmentEmbeddable(
     val url: String,
-    val type: String
+    val type: String,
 ) {
     fun toDto() = Attachment(
         url = url,
-        type = ru.netology.nmedia.dto.AttachmentType.valueOf(type)
+        type = ru.netology.nmedia.dto.AttachmentType.valueOf(type),
     )
 
     companion object {
         fun fromDto(dto: Attachment?) = dto?.let {
             AttachmentEmbeddable(
                 url = it.url,
-                type = it.type.name
+                type = it.type.name,
             )
         }
     }
