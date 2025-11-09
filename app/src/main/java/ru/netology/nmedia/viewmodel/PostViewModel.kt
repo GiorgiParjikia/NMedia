@@ -73,8 +73,8 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     fun showNewPosts() {
         viewModelScope.launch {
             try {
-                repository.getAllAsync()
-                _newerCount.postValue(0)
+                repository.revealHidden()   // Делаем скрытые посты видимыми
+                _newerCount.postValue(0)    // бнуляем счётчик
             } catch (_: Exception) {
                 _state.postValue(FeedModelState(error = true))
             }

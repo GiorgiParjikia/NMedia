@@ -12,7 +12,9 @@ interface PostRepository {
 
     suspend fun getAllAsync()
     suspend fun getAll()
-    suspend fun likeById(id: Long) : Post
+    suspend fun likeById(id: Long): Post
     suspend fun removeById(id: Long)
     suspend fun save(post: Post): Post
+
+    suspend fun revealHidden()
 }

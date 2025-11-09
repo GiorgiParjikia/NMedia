@@ -7,18 +7,18 @@ import ru.netology.nmedia.entity.PostEntity
 @Dao
 interface PostDao {
 
-    // ===== Получение всех постов =====
-    @Query("SELECT * FROM Post_Entity ORDER BY id DESC")
+    // ===== Получение всех видимых постов =====
+    @Query("SELECT * FROM Post_Entity WHERE isHidden = 0 ORDER BY id DESC")
     fun getAll(): Flow<List<PostEntity>>
 
-    @Query("SELECT COUNT(*) = 0 FROM Post_Entity")
+    @Query("SELECT COUNT(*) = 0 FROM Post_Entity WHERE isHidden = 0")
     fun isEmpty(): Flow<Boolean>
 
-    // Получение максимального ID (нужно для getNewer)
+    // ===== Максимальный ID =====
     @Query("SELECT MAX(id) FROM Post_Entity")
     suspend fun getLatestId(): Long?
 
-    // ===== Вставка / обновление =====
+    // ===== Вставка =====
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(post: PostEntity)
 
@@ -48,11 +48,18 @@ interface PostDao {
     @Query("SELECT * FROM Post_Entity WHERE id = :id LIMIT 1")
     suspend fun getPostById(id: Long): PostEntity?
 
-    // ===== Получить локальные посты (ещё не отправленные) =====
+    // ===== Локальные посты (ещё не отправленные) =====
     @Query("SELECT * FROM Post_Entity WHERE isLocal = 1")
     suspend fun getUnsynced(): List<PostEntity>
 
-    // ===== Обновить статус после синхронизации =====
     @Query("UPDATE Post_Entity SET isLocal = 0 WHERE id = :id")
     suspend fun markSynced(id: Long)
+
+    // ===== Новые, скрытые посты =====
+    @Query("SELECT COUNT(*) FROM Post_Entity WHERE isHidden = 1")
+    suspend fun countHidden(): Int
+
+    // ===== Сделать все скрытые посты видимыми =====
+    @Query("UPDATE Post_Entity SET isHidden = 0 WHERE isHidden = 1")
+    suspend fun revealHiddenPosts()
 }

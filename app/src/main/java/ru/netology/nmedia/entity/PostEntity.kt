@@ -18,14 +18,18 @@ data class PostEntity(
     val likedByMe: Boolean,
     val likes: Int,
 
-    // Вложенный объект Attachment
+    // Вложение
     @Embedded(prefix = "attachment_")
     val attachment: AttachmentEmbeddable? = null,
 
-    // Для офлайн-режима (задача №2)
+    // Локальный пост — создан офлайн
     val isLocal: Boolean = false,
     val localId: Long? = null,
+
+    // Посты, полученные из Flow, но ещё не отображённые
+    val isHidden: Boolean = false,
 ) {
+
     fun toDto(): Post = Post(
         id = id,
         author = author,
@@ -38,7 +42,13 @@ data class PostEntity(
     )
 
     companion object {
-        fun fromDto(dto: Post, isLocal: Boolean = false, localId: Long? = null): PostEntity =
+
+        fun fromDto(
+            dto: Post,
+            isLocal: Boolean = false,
+            localId: Long? = null,
+            isHidden: Boolean = false,
+        ): PostEntity =
             PostEntity(
                 id = dto.id,
                 author = dto.author,
@@ -50,9 +60,12 @@ data class PostEntity(
                 attachment = AttachmentEmbeddable.fromDto(dto.attachment),
                 isLocal = isLocal,
                 localId = localId,
+                isHidden = isHidden,
             )
     }
 }
+
+
 
 // =====================
 // Attachment Embeddable
