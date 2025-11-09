@@ -108,6 +108,10 @@ class FeedFragment : Fragment() {
             }
         }
 
+        viewModel.newerCount.observe(viewLifecycleOwner) {
+            println(it)
+        }
+
         // 🔹 FAB "+"
         binding.fab.setOnClickListener {
             viewModel.clearEdit()

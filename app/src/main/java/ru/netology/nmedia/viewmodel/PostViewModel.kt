@@ -2,7 +2,9 @@ package ru.netology.nmedia.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.*
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import ru.netology.nmedia.db.AppDb
 import ru.netology.nmedia.dto.Post
@@ -32,9 +34,20 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     private val _state = MutableLiveData(FeedModelState())
     val state: LiveData<FeedModelState> get() = _state
 
-    val data: LiveData<FeedModel> = repository.data.asFlow()
-        .combine(repository.isEmpty().asFlow(), ::FeedModel)
-        .asLiveData()
+    // 🔹 Основной фид
+    val data: LiveData<FeedModel> = repository.data
+        .map { list: List<Post> -> FeedModel(list, list.isEmpty()) }
+        .catch { it.printStackTrace() }
+        .asLiveData(Dispatchers.Default)
+
+    // 🔹 Количество новых постов
+    val newerCount = data.switchMap {
+        repository.getNewer(it.posts.firstOrNull()?.id ?: 0L)
+            .catch {
+                _state.postValue(FeedModelState(error = true))
+            }
+            .asLiveData()
+    }
 
     val edited = MutableLiveData(empty)
 
@@ -45,7 +58,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         loadPosts()
     }
 
-    // 🔹 Загрузка постов
+    // ✅ Загрузка постов
     fun loadPosts() {
         viewModelScope.launch {
             _state.postValue(_state.value?.copy(loading = true))
@@ -58,7 +71,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // 🔹 Лайк / дизлайк
+    // ✅ Лайк / дизлайк
     fun like(id: Long) {
         viewModelScope.launch {
             try {
@@ -69,7 +82,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // 🔹 Удаление поста
+    // ✅ Удаление поста
     fun removeById(id: Long) {
         viewModelScope.launch {
             try {
@@ -80,7 +93,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // 🔹 Сохранение поста
+    // ✅ Сохранение поста
     fun save() {
         viewModelScope.launch {
             edited.value?.let {
@@ -91,7 +104,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // 🔹 Изменение текста поста
+    // ✅ Изменение текста
     fun changeContent(content: String) {
         val text = content.trim()
         val current = edited.value ?: empty
@@ -107,11 +120,12 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         edited.value = empty
     }
 
-    // 🔹 Черновики
+    // ✅ Черновики
     fun saveDraft(text: String) = draftRepo.save(text)
     fun getDraft(): String = draftRepo.get()
     fun clearDraft() = draftRepo.clear()
 
+    // ✅ Обновление
     fun refresh() {
         viewModelScope.launch {
             _state.postValue(_state.value?.copy(refreshing = true))
@@ -125,8 +139,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-
-    // 🔹 Повторная отправка локальных (несинхронизированных) постов
+    // ✅ Повторная отправка несинхронизированных постов
     fun retryUnsyncedPosts() {
         viewModelScope.launch {
             _state.postValue(_state.value?.copy(loading = true))
@@ -138,5 +151,4 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
-
 }

@@ -1,38 +1,57 @@
 package ru.netology.nmedia.repository
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.map
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import ru.netology.nmedia.api.PostApi
 import ru.netology.nmedia.dao.PostDao
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.entity.PostEntity
+import ru.netology.nmedia.error.AppError
 import java.io.IOException
 
 class PostRepositoryNetworkImpl(
     private val dao: PostDao,
 ) : PostRepository {
 
-    override val data: LiveData<List<Post>>
-        get() = dao.getAll().map { entities ->
-            entities.map(PostEntity::toDto)
+    override val data = dao.getAll().map { list ->
+        list.map { it.toDto() }
+    }
+
+    override fun getNewer(id: Long): Flow<Int> = flow {
+        while (true) {
+            delay(10_000)
+
+            try {
+                // API возвращает List<Post>
+                val posts = PostApi.retrofitService.getNewer(id)
+
+                if (posts.isNotEmpty()) {
+                    dao.insert(posts.map(PostEntity::fromDto))
+                    emit(posts.size)
+                }
+
+            } catch (e: Exception) {
+                throw AppError.from(e)
+            }
         }
+    }
 
     override fun isEmpty() = dao.isEmpty()
 
-    // ===== Получение всех постов =====
     override suspend fun getAllAsync() {
         val posts = PostApi.retrofitService.getAll()
         dao.insert(posts.map(PostEntity::fromDto))
     }
 
-    // ===== Удаление =====
     override suspend fun removeById(id: Long) {
         val postToRemove = dao.getPostById(id)?.toDto()
         dao.removeById(id)
+
         try {
             PostApi.retrofitService.deleteById(id)
         } catch (e: IOException) {
-            // откат, если не удалось удалить на сервере
             if (postToRemove != null) {
                 dao.insert(PostEntity.fromDto(postToRemove))
             }
@@ -40,7 +59,6 @@ class PostRepositoryNetworkImpl(
         }
     }
 
-    // ===== Лайк / дизлайк =====
     override suspend fun likeById(id: Long): Post {
         val post = dao.getPostById(id)?.toDto()
             ?: throw RuntimeException("Post not found")
@@ -51,57 +69,46 @@ class PostRepositoryNetworkImpl(
             likes = post.likes + if (liked) 1 else -1
         )
 
-        dao.insert(PostEntity.fromDto(updated)) // обновляем локально
+        dao.insert(PostEntity.fromDto(updated))
 
         return try {
-            val response = if (liked) {
+            val result = if (liked) {
                 PostApi.retrofitService.likeById(id)
             } else {
                 PostApi.retrofitService.dislikeById(id)
             }
-            dao.insert(PostEntity.fromDto(response))
-            response
+            dao.insert(PostEntity.fromDto(result))
+            result
         } catch (e: IOException) {
-            // при ошибке сети откатываем изменения
             dao.insert(PostEntity.fromDto(post))
             throw e
         }
     }
 
-    // ===== Сохранение (оптимистичное) =====
     override suspend fun save(post: Post): Post {
-        // 1️⃣ сохраняем локально, чтобы сразу увидеть пост
-        val localEntity = PostEntity.fromDto(
-            post.copy(
-                id = 0,
-                published = System.currentTimeMillis()
-            ),
+        val tmp = PostEntity.fromDto(
+            post.copy(id = 0, published = System.currentTimeMillis()),
             isLocal = true
         )
-        dao.insert(localEntity)
 
-        // 2️⃣ пытаемся отправить на сервер
+        dao.insert(tmp)
+
         return try {
             val saved = PostApi.retrofitService.save(post)
             dao.insert(PostEntity.fromDto(saved, isLocal = false))
             saved
         } catch (e: IOException) {
-            // 3️⃣ сеть недоступна — просто остаётся в локальной БД
-            e.printStackTrace()
             post
         }
     }
 
-    // ===== Повторная отправка несинхронизированных постов =====
     suspend fun retryUnsyncedPosts() {
         val unsynced = dao.getUnsynced()
-        for (entity in unsynced) {
+        for (post in unsynced) {
             try {
-                val response = PostApi.retrofitService.save(entity.toDto())
-                dao.insert(PostEntity.fromDto(response, isLocal = false))
-            } catch (_: IOException) {
-                // сети всё ещё нет — пропускаем
-            }
+                val saved = PostApi.retrofitService.save(post.toDto())
+                dao.insert(PostEntity.fromDto(saved, isLocal = false))
+            } catch (_: IOException) {}
         }
     }
 

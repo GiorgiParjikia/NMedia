@@ -53,6 +53,9 @@ interface PostApiService {
     // ====== Дизлайк ======
     @DELETE("posts/{id}/likes")
     suspend fun dislikeById(@Path("id") id: Long): Post
+
+    @GET("posts/{id}/newer")
+    suspend fun getNewer(@Path("id") id: Long): List<Post>
 }
 
 object PostApi {
