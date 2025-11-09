@@ -11,6 +11,8 @@ import ru.netology.nmedia.repository.DraftRepository
 import ru.netology.nmedia.repository.PostRepositoryNetworkImpl
 import ru.netology.nmedia.util.SingleLiveEvent
 
+
+
 private val empty = Post(
     id = 0,
     author = "Giorgi",
@@ -31,24 +33,11 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     private val _state = MutableLiveData(FeedModelState())
     val state: LiveData<FeedModelState> get() = _state
 
-    // 🔹 Заменено с Flow на MediatorLiveData
-    val data = MediatorLiveData<FeedModel>().apply {
-        var posts: List<Post> = emptyList()
-        var isEmpty = true
-
-        fun update() {
-            value = FeedModel(posts, isEmpty)
-        }
-
-        addSource(repository.data) {
-            posts = it
-            update()
-        }
-        addSource(repository.isEmpty()) {
-            isEmpty = it
-            update()
-        }
+    // 🔹 Простое отображение постов без MediatorLiveData
+    val data: LiveData<FeedModel> = repository.data.map { posts ->
+        FeedModel(posts, posts.isEmpty())
     }
+
 
     val edited = MutableLiveData(empty)
 
@@ -140,7 +129,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // 🔹 Повторная отправка локальных (несинхронизированных) постов
+    // 🔹 Повторная отправка локальных постов
     fun retryUnsyncedPosts() {
         viewModelScope.launch {
             try {
