@@ -1,6 +1,7 @@
 package ru.netology.nmedia.viewmodel
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
@@ -10,9 +11,11 @@ import ru.netology.nmedia.db.AppDb
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.model.FeedModel
 import ru.netology.nmedia.model.FeedModelState
+import ru.netology.nmedia.model.PhotoModel
 import ru.netology.nmedia.repository.DraftRepository
 import ru.netology.nmedia.repository.PostRepositoryNetworkImpl
 import ru.netology.nmedia.util.SingleLiveEvent
+import java.io.File
 
 private val empty = Post(
     id = 0,
@@ -21,7 +24,8 @@ private val empty = Post(
     published = 0,
     content = "",
     likedByMe = false,
-    likes = 0
+    likes = 0,
+    attachment = null
 )
 
 class PostViewModel(application: Application) : AndroidViewModel(application) {
@@ -35,71 +39,104 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     private val _state = MutableLiveData(FeedModelState())
     val state: LiveData<FeedModelState> get() = _state
 
-    // Основной фид (Flow → LiveData)
-    val data: LiveData<FeedModel> = repository.data
-        .map { posts -> FeedModel(posts, posts.isEmpty()) }
-        .catch {
-            it.printStackTrace()
-            _state.postValue(FeedModelState(error = true))
-        }
-        .asLiveData(Dispatchers.Default)
+    // ------------------------ PHOTO ------------------------
+    private val _photo = MutableLiveData<PhotoModel?>(null)
+    val photo: LiveData<PhotoModel?> get() = _photo
 
-    // Счётчик новых постов
-    private val _newerCount = MutableLiveData(0)
-    val newerCount: LiveData<Int> get() = _newerCount
-
-    init {
-        loadPosts()
-
-        // Реактивное отслеживание новых постов
-        data.switchMap { feed ->
-            val lastSeenId = feed.posts.firstOrNull()?.id ?: 0L
-
-            repository.getNewer(lastSeenId)
-                .catch {
-                    _state.postValue(FeedModelState(error = true))
-                }
-                .asLiveData()
-        }.observeForever { count ->
-            if (count != null && count > 0) {
-                // главное исправление — накапливаем число
-                val old = _newerCount.value ?: 0
-                _newerCount.postValue(old + count)
-            }
-        }
+    fun updatePhoto(uri: Uri, file: File) {
+        _photo.value = PhotoModel(uri, file)
     }
 
-    // Нажатие "Показать новые"
-    fun showNewPosts() {
-        viewModelScope.launch {
-            try {
-                repository.revealHidden()   // Делаем скрытые посты видимыми
-                _newerCount.postValue(0)    // бнуляем счётчик
-            } catch (_: Exception) {
-                _state.postValue(FeedModelState(error = true))
-            }
-        }
+    fun removePhoto() {
+        _photo.value = null
     }
+    // -------------------------------------------------------
 
     val edited = MutableLiveData(empty)
 
     private val _postCreated = SingleLiveEvent<Unit>()
     val postCreated: LiveData<Unit> get() = _postCreated
 
-    // Загрузка постов
-    fun loadPosts() {
-        viewModelScope.launch {
-            _state.postValue(_state.value?.copy(loading = true))
-            try {
-                repository.getAllAsync()
-                _state.value = FeedModelState()
-            } catch (_: Exception) {
-                _state.value = FeedModelState(error = true)
+    // FLOW → LiveData
+    val data: LiveData<FeedModel> = repository.data
+        .map { FeedModel(it, it.isEmpty()) }
+        .catch { _state.postValue(FeedModelState(error = true)) }
+        .asLiveData(Dispatchers.Default)
+
+    private val _newerCount = MutableLiveData(0)
+    val newerCount: LiveData<Int> get() = _newerCount
+
+    init {
+        loadPosts()
+
+        // отслеживаем новые посты
+        data.switchMap { feed ->
+            val last = feed.posts.firstOrNull()?.id ?: 0L
+            repository.getNewer(last)
+                .catch { _state.postValue(FeedModelState(error = true)) }
+                .asLiveData()
+        }.observeForever { count ->
+            count?.let {
+                _newerCount.value = (_newerCount.value ?: 0) + it
             }
         }
     }
 
-    // Лайк
+    fun edit(post: Post) {
+        edited.value = post
+
+        // 🔥 если у поста есть вложение — загружаем его в preview
+        post.attachment?.let {
+            _photo.value = PhotoModel(
+                uri = Uri.parse("http://10.0.2.2:9999/media/${it.url}"),
+                file = null // файла нет — показываем только Preview по http
+            )
+        } ?: run {
+            _photo.value = null
+        }
+    }
+
+    fun clearEdit() {
+        edited.value = empty
+        _photo.value = null
+    }
+
+    fun changeContent(content: String) {
+        val trimmed = content.trim()
+        val post = edited.value ?: empty
+        if (trimmed != post.content) {
+            edited.value = post.copy(content = trimmed)
+        }
+    }
+
+    fun save() {
+        viewModelScope.launch {
+            edited.value?.let { post ->
+
+                val currentPhoto = _photo.value
+                val newFile = currentPhoto?.file
+
+                val finalPost = when {
+                    // ✔ Новый файл выбран → заменяем вложение
+                    newFile != null -> post.copy(attachment = null)
+
+                    // ✔ При редактировании фото не трогали — сохраняем старое
+                    post.id != 0L && post.attachment != null -> post
+
+                    // ✔ Новый пост без фото → attachment = null
+                    else -> post.copy(attachment = null)
+                }
+
+                repository.save(finalPost, newFile)
+
+                _postCreated.postValue(Unit)
+                edited.value = empty
+                _photo.value = null
+            }
+        }
+    }
+
+
     fun like(id: Long) {
         viewModelScope.launch {
             try {
@@ -110,7 +147,6 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Удаление
     fun removeById(id: Long) {
         viewModelScope.launch {
             try {
@@ -121,44 +157,10 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Сохранение
-    fun save() {
+    fun loadPosts() {
         viewModelScope.launch {
-            edited.value?.let {
-                repository.save(it)
-                _postCreated.postValue(Unit)
-                edited.value = empty
-            }
-        }
-    }
-
-    // Изменение контента
-    fun changeContent(content: String) {
-        val text = content.trim()
-        val current = edited.value ?: empty
-        if (text == current.content) return
-        edited.value = current.copy(content = text)
-    }
-
-    fun edit(post: Post) {
-        edited.value = post
-    }
-
-    fun clearEdit() {
-        edited.value = empty
-    }
-
-    // Черновики
-    fun saveDraft(text: String) = draftRepo.save(text)
-    fun getDraft(): String = draftRepo.get()
-    fun clearDraft() = draftRepo.clear()
-
-    // Pull-to-refresh
-    fun refresh() {
-        viewModelScope.launch {
-            _state.postValue(_state.value?.copy(refreshing = true))
             try {
-                repository.retryUnsyncedPosts()
+                _state.postValue(_state.value?.copy(loading = true))
                 repository.getAllAsync()
                 _state.value = FeedModelState()
             } catch (_: Exception) {
@@ -167,16 +169,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Повторная отправка офлайн-постов
-    fun retryUnsyncedPosts() {
-        viewModelScope.launch {
-            _state.postValue(_state.value?.copy(loading = true))
-            try {
-                repository.retryUnsyncedPosts()
-                _state.value = FeedModelState()
-            } catch (_: Exception) {
-                _state.value = FeedModelState(error = true)
-            }
-        }
-    }
+    fun saveDraft(text: String) = draftRepo.save(text)
+    fun getDraft(): String = draftRepo.get()
+    fun clearDraft() = draftRepo.clear()
 }

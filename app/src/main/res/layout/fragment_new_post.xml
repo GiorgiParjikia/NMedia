@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
@@ -7,32 +8,79 @@
     android:layout_height="match_parent"
     tools:context=".activity.NewPostFragment">
 
-    <EditText
-        android:id="@+id/edit"
+    <!-- ScrollView может содержать только ОДИН дочерний элемент -->
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@android:color/transparent"
-        android:gravity="start|top"
-        android:hint="@string/enter_post_content"
-        android:autofillHints="text"
-        android:inputType="textMultiLine"
-        android:importantForAutofill="noExcludeDescendants"
-        android:imeOptions="actionDone" />
+        android:layout_height="match_parent">
 
-    <com.google.android.material.bottomappbar.BottomAppBar
-        android:id="@+id/bottomAppBar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        style="@style/Widget.MaterialComponents.BottomAppBar.Colored" />
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-    android:id="@+id/save"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    app:srcCompat="@drawable/ic_add_24_dp"
-    app:layout_anchor="@id/bottomAppBar"
-    android:contentDescription="@string/save" />
+            <EditText
+                tools:text="@tools:sample/lorem[300]"
+                android:id="@+id/edit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@android:color/transparent"
+                android:gravity="start|top"
+                android:hint="@string/enter_post_content"
+                android:autofillHints="text"
+                android:padding="@dimen/common_spacing"
+                android:inputType="textMultiLine"
+                android:importantForAutofill="noExcludeDescendants"
+                android:imeOptions="actionDone" />
 
+            <FrameLayout
+                tools:visibility="visible"
+                android:visibility="gone"
+                android:id="@+id/previewContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <ImageView
+                    android:id="@+id/preview"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:adjustViewBounds="true"
+                    tools:src="@tools:sample/avatars[]" />
+
+                <Button
+                    android:id="@+id/remove"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:text="@string/Remove" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:background="?colorSurface"
+                android:id="@+id/bottomAppBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:padding="8dp"
+                style="@style/Widget.MaterialComponents.BottomAppBar.Colored">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/takePhoto"
+                    android:layout_gravity="center_vertical"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    app:icon="@drawable/baseline_camera_alt_24"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/pickPhoto"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    app:icon="@drawable/outline_add_photo_alternate_24"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

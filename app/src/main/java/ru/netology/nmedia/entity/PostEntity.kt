@@ -4,6 +4,7 @@ import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import ru.netology.nmedia.dto.Attachment
+import ru.netology.nmedia.dto.AttachmentType
 import ru.netology.nmedia.dto.Post
 
 @Entity(tableName = "Post_Entity")
@@ -18,15 +19,11 @@ data class PostEntity(
     val likedByMe: Boolean,
     val likes: Int,
 
-    // Вложение
     @Embedded(prefix = "attachment_")
     val attachment: AttachmentEmbeddable? = null,
 
-    // Локальный пост — создан офлайн
     val isLocal: Boolean = false,
     val localId: Long? = null,
-
-    // Посты, полученные из Flow, но ещё не отображённые
     val isHidden: Boolean = false,
 ) {
 
@@ -42,7 +39,6 @@ data class PostEntity(
     )
 
     companion object {
-
         fun fromDto(
             dto: Post,
             isLocal: Boolean = false,
@@ -65,18 +61,13 @@ data class PostEntity(
     }
 }
 
-
-
-// =====================
-// Attachment Embeddable
-// =====================
 data class AttachmentEmbeddable(
     val url: String,
     val type: String,
 ) {
     fun toDto() = Attachment(
         url = url,
-        type = ru.netology.nmedia.dto.AttachmentType.valueOf(type),
+        type = AttachmentType.valueOf(type),
     )
 
     companion object {

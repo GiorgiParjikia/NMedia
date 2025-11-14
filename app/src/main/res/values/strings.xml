@@ -29,8 +29,8 @@
     <string name="empty_post_warning">Post cannot be empty</string>
     <string name="description_post_attachment">Image attachment</string>
     <string name="show_new_posts">Show new posts (%1$d)</string>
-
-
+    <string name="Remove">Remove</string>
+    <string name="image_pick_error" >Image Pick Error</string>
 
 
 </resources>

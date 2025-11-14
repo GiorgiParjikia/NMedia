@@ -4,11 +4,17 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import ru.netology.nmedia.api.PostApi
 import ru.netology.nmedia.dao.PostDao
+import ru.netology.nmedia.dto.Attachment
+import ru.netology.nmedia.dto.AttachmentType
+import ru.netology.nmedia.dto.Media
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.entity.PostEntity
 import ru.netology.nmedia.error.AppError
+import java.io.File
 import java.io.IOException
 
 class PostRepositoryNetworkImpl(
@@ -38,7 +44,7 @@ class PostRepositoryNetworkImpl(
                                 dto,
                                 isLocal = false,
                                 localId = null
-                            ).copy(isHidden = true) // ✅ Скрываем новые посты
+                            ).copy(isHidden = true) // Скрываем новые посты
                         }
                     )
                     emit(posts.size) // отправляем количество скрытых
@@ -120,11 +126,28 @@ class PostRepositoryNetworkImpl(
     // ==================================================
     // Сохранение (онлайн + оффлайн)
     // ==================================================
-    override suspend fun save(post: Post): Post {
+    override suspend fun save(post: Post, photo: File?): Post {
         return try {
-            val saved = PostApi.retrofitService.save(post)
+            val media = photo?.let { upload(it) }
+
+            val postWithAttachment =
+                if (media != null) {
+                    // выбрали НОВОЕ фото
+                    post.copy(
+                        attachment = Attachment(
+                            url = media.id,
+                            type = AttachmentType.IMAGE
+                        )
+                    )
+                } else {
+                    // фото НЕ меняли → сохраняем старое
+                    post
+                }
+
+            val saved = PostApi.retrofitService.save(postWithAttachment)
             dao.insert(PostEntity.fromDto(saved, isLocal = false))
             saved
+
         } catch (e: IOException) {
             val local = post.copy(
                 id = System.currentTimeMillis(),
@@ -134,6 +157,16 @@ class PostRepositoryNetworkImpl(
             local
         }
     }
+
+    private suspend fun upload(file: File): Media =
+        PostApi.retrofitService.upload(
+                MultipartBody.Part.createFormData(
+                    "file",
+                    file.name,
+                    file.asRequestBody(),
+                    )
+        )
+
 
     // ==================================================
     // Повторная отправка оффлайн-постов

@@ -33,7 +33,6 @@ class FeedFragment : Fragment() {
 
         val binding = FragmentFeedBinding.inflate(inflater, container, false)
 
-        // Адаптер
         val adapter = PostAdapter(object : OnInteractionListener {
 
             override fun onOpen(post: Post) {
@@ -68,61 +67,40 @@ class FeedFragment : Fragment() {
                 try {
                     startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                 } catch (_: ActivityNotFoundException) {
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.no_app_to_open),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(requireContext(), R.string.no_app_to_open, Toast.LENGTH_SHORT)
+                        .show()
                 }
+            }
+            override fun onImage(url: String) {
+                findNavController().navigate(
+                    R.id.fullImageFragment,
+                    Bundle().apply { putString("url", url) }
+                )
             }
         })
 
-        // Настройка списка
         binding.list.layoutManager = LinearLayoutManager(requireContext())
         binding.list.adapter = adapter
 
-        // Swipe Refresh
         binding.swipeRefresh.setOnRefreshListener {
-            viewModel.refresh()
+            viewModel.loadPosts()
         }
 
-        // Главный фид — корректный submitList + автоскролл
         viewModel.data.observe(viewLifecycleOwner) { model ->
-            adapter.submitList(model.posts) {
-                // Скроллим вверх только если пользователь нажал "показать новые"
-                if (viewModel.newerCount.value == 0) {
-                    binding.list.smoothScrollToPosition(0)
-                }
-            }
+            adapter.submitList(model.posts)
             binding.empty.isVisible = model.empty
+            binding.swipeRefresh.isRefreshing = false
         }
 
-        // Плашка новых постов
-        viewModel.newerCount.observe(viewLifecycleOwner) { count ->
-            binding.newPostsCard.isVisible = count > 0
-            binding.newPostsText.text =
-                getString(R.string.show_new_posts, count)
-        }
-
-        // Нажатие на плашку — скрыть и загрузить
-        binding.newPostsCard.setOnClickListener {
-            binding.newPostsCard.isVisible = false
-            viewModel.showNewPosts()
-        }
-
-        // Ошибки и загрузка
         viewModel.state.observe(viewLifecycleOwner) { state ->
             binding.progress.isVisible = state.loading
-            binding.swipeRefresh.isRefreshing = state.refreshing
-
             if (state.error) {
                 Snackbar.make(binding.root, R.string.error_loading, Snackbar.LENGTH_LONG)
-                    .setAction(R.string.retry) { viewModel.refresh() }
+                    .setAction(R.string.retry) { viewModel.loadPosts() }
                     .show()
             }
         }
 
-        // FAB
         binding.fab.setOnClickListener {
             viewModel.clearEdit()
             findNavController().navigate(R.id.action_feedFragment_to_newPostFragment)

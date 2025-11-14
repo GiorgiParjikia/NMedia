@@ -33,4 +33,14 @@
             app:destination="@id/newPostFragment" />
     </fragment>
 
+    <!-- 🔥 Новый фрагмент для полноэкранного изображения -->
+    <fragment
+        android:id="@+id/fullImageFragment"
+        android:name="ru.netology.nmedia.model.FullImageFragment"
+        android:label="Image">
+        <argument
+            android:name="url"
+            app:argType="string" />
+    </fragment>
+
 </navigation>
