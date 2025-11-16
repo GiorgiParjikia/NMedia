@@ -12,6 +12,7 @@ import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -36,7 +37,6 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
         checkGoogleApiAvailability()
         createDefaultNotificationChannel()
 
-        // -------- MenuProvider --------
         val menuProvider = object : MenuProvider {
 
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
@@ -46,44 +46,71 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
             override fun onPrepareMenu(menu: Menu) {
                 val authorized = viewModel.isAuthenticated
 
+                // Показываем/скрываем группы
                 menu.setGroupVisible(R.id.authorized, authorized)
                 menu.setGroupVisible(R.id.unauthorized, !authorized)
             }
 
-            override fun onMenuItemSelected(menuItem: MenuItem): Boolean =
-                when (menuItem.itemId) {
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                val navController = findNavController(R.id.nav_host_fragment)
+
+                return when (menuItem.itemId) {
+
                     R.id.signIn -> {
-                        AppAuth.getInstance().setAuth(5, "x-token")
+                        navController.navigate(R.id.signInFragment)
                         true
                     }
 
                     R.id.signUp -> {
-                        AppAuth.getInstance().setAuth(5, "x-token")
+                        navController.navigate(R.id.signUpFragment)
                         true
                     }
 
                     R.id.logout -> {
-                        AppAuth.getInstance().removeAuth()
+                        val currentId = navController.currentDestination?.id
+
+                        if (currentId == R.id.newPostFragment) {
+                            AlertDialog.Builder(this@AppActivity)
+                                .setTitle(R.string.logout)
+                                .setMessage(R.string.logout_confirm_while_editing)
+                                .setPositiveButton(android.R.string.ok) { _, _ ->
+                                    AppAuth.getInstance().removeAuth()
+                                    navController.popBackStack()
+                                }
+                                .setNegativeButton(android.R.string.cancel, null)
+                                .show()
+
+                        } else {
+                            AlertDialog.Builder(this@AppActivity)
+                                .setTitle(R.string.logout)
+                                .setMessage(R.string.logout_confirm)
+                                .setPositiveButton(android.R.string.ok) { _, _ ->
+                                    AppAuth.getInstance().removeAuth()
+                                }
+                                .setNegativeButton(android.R.string.cancel, null)
+                                .show()
+                        }
                         true
                     }
 
                     else -> false
                 }
+            }
         }
 
         addMenuProvider(menuProvider, this)
 
-        // ---- ВАЖНО: корректное обновление меню ----
+        // обновление меню при авторизации
         viewModel.data.observe(this) {
-            invalidateMenu()     // <-- единственный рабочий вариант
+            invalidateMenu()
         }
 
-        // ---- FCM ----
+        // FCM токен
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
-            Log.i(TAG, "fcm_token: $token")
+            Log.i(TAG, token)
         }
 
-        // ---- Уведомления ----
+        // переход по уведомлению
         handleIntentIfAny(intent)
     }
 
@@ -96,8 +123,6 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
     private fun handleIntentIfAny(intent: Intent?) {
         val postId = intent?.getLongExtra("postId", 0L) ?: 0L
         if (postId != 0L) {
-            Log.i(TAG, "Open from notification, postId=$postId")
-
             findNavController(R.id.nav_host_fragment).navigate(
                 R.id.action_feedFragment_to_singlePostFragment,
                 bundleOf("postId" to postId)
@@ -126,6 +151,7 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
 
     private fun createDefaultNotificationChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+
         val channel = NotificationChannel(
             CHANNEL_ID,
             getString(R.string.app_name),

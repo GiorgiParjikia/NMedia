@@ -34,6 +34,9 @@
     <string name="logout" >Log Out</string>
     <string name="sign_in" >Sign In</string>
     <string name="sign_up" >Sign Up</string>
-
+    <string name="logout_confirm_while_editing">Do you really want to leave? The unsaved recording will be lost.</string>
+    <string name="auth_required_title">Authorization is required</string>
+    <string name="auth_required_message">To perform this action, log in to your account.</string>
+    <string name="logout_confirm">Do you really want to get out?</string>
 
 </resources>

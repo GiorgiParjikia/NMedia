@@ -7,44 +7,38 @@ import kotlinx.coroutines.flow.asStateFlow
 import ru.netology.nmedia.dto.Token
 
 class AppAuth private constructor(context: Context) {
+
     companion object {
         private const val ID_KEY = "ID_KEY"
         private const val TOKEN_KEY = "TOKEN_KEY"
-        private var INSTANCE: AppAuth? = null
 
+        private var INSTANCE: AppAuth? = null
 
         fun init(context: Context) {
             INSTANCE = AppAuth(context)
         }
 
-        fun getInstance() = requireNotNull(INSTANCE) {
-            "need call init() first"
-        }
+        fun getInstance(): AppAuth =
+            requireNotNull(INSTANCE) { "AppAuth must be initialized before usage!" }
     }
 
+    private val prefs = context.getSharedPreferences("auth", Context.MODE_PRIVATE)
 
-    private val prefs =
-        context.applicationContext.getSharedPreferences("auth", Context.MODE_PRIVATE)
-    private val _data: MutableStateFlow<Token?>
+    private val _data = MutableStateFlow<Token?>(null)
+    val data = _data.asStateFlow()
+    val authStateFlow = data
 
     init {
         val id = prefs.getLong(ID_KEY, 0L)
         val token = prefs.getString(TOKEN_KEY, null)
 
         if (id == 0L || token == null) {
-            prefs.edit{
-                clear()
-            }
-            _data = MutableStateFlow(null)
+            prefs.edit { clear() }
+            _data.value = null
         } else {
-            _data = MutableStateFlow(Token(id, token))
+            _data.value = Token(id, token)
         }
     }
-
-    val data = _data.asStateFlow()
-    val authStateFlow = data
-
-
 
     fun setAuth(id: Long, token: String) {
         prefs.edit {
@@ -55,9 +49,7 @@ class AppAuth private constructor(context: Context) {
     }
 
     fun removeAuth() {
-        prefs.edit {
-            clear()
-        }
-            _data.value = null
-        }
+        prefs.edit { clear() }
+        _data.value = null
+    }
 }

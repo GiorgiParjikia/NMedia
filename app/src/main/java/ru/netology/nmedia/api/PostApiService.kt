@@ -11,6 +11,7 @@ import ru.netology.nmedia.BuildConfig
 import ru.netology.nmedia.auth.AppAuth
 import ru.netology.nmedia.dto.Media
 import ru.netology.nmedia.dto.Post
+import ru.netology.nmedia.dto.Token
 
 private const val BASE_URL = "${BuildConfig.BASE_URL}/api/slow/"
 
@@ -33,7 +34,6 @@ private val okHttp = OkHttpClient.Builder()
     .addInterceptor(logging)
     .build()
 
-
 private val retrofit = Retrofit.Builder()
     .baseUrl(BASE_URL)
     .addConverterFactory(GsonConverterFactory.create())
@@ -41,6 +41,7 @@ private val retrofit = Retrofit.Builder()
     .build()
 
 interface PostsApiService {
+    // -------- POST'ы --------
     @GET("posts")
     suspend fun getAll(): Response<List<Post>>
 
@@ -65,6 +66,23 @@ interface PostsApiService {
     @Multipart
     @POST("media")
     suspend fun upload(@Part media: MultipartBody.Part): Response<Media>
+
+    // -------- АУТЕНТИФИКАЦИЯ --------
+    @FormUrlEncoded
+    @POST("users/authentication")
+    suspend fun authenticate(
+        @Field("login") login: String,
+        @Field("pass") pass: String,
+    ): Response<Token>
+
+    // -------- РЕГИСТРАЦИЯ --------
+    @FormUrlEncoded
+    @POST("users/registration")
+    suspend fun register(
+        @Field("login") login: String,
+        @Field("pass") pass: String,
+        @Field("name") name: String,
+    ): Response<Token>
 }
 
 object PostsApi {

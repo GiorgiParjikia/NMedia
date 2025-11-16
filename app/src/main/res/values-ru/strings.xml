@@ -25,5 +25,9 @@
     <string name="logout">Выход</string>
     <string name="sign_in" >Войти</string>
     <string name="sign_up" >Зарегистрироватся</string>
+    <string name="logout_confirm_while_editing">Вы действительно хотите выйти? Несохранённый пост будет потерян.</string>
+    <string name="auth_required_title">Требуется авторизация</string>
+    <string name="auth_required_message">Чтобы выполнить это действие, войдите в аккаунт.</string>
+    <string name="logout_confirm">Вы действительно хотите выйти?</string>
 
 </resources>

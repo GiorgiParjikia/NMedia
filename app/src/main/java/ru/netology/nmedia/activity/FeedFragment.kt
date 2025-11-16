@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.core.net.toUri
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -19,16 +20,18 @@ import ru.netology.nmedia.adapter.OnInteractionListener
 import ru.netology.nmedia.adapter.PostAdapter
 import ru.netology.nmedia.databinding.FragmentFeedBinding
 import ru.netology.nmedia.dto.Post
+import ru.netology.nmedia.viewmodel.AuthViewModel
 import ru.netology.nmedia.viewmodel.PostViewModel
 
 class FeedFragment : Fragment() {
 
     private val viewModel: PostViewModel by activityViewModels()
+    private val authViewModel: AuthViewModel by activityViewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
 
         val binding = FragmentFeedBinding.inflate(inflater, container, false)
@@ -42,7 +45,13 @@ class FeedFragment : Fragment() {
                 )
             }
 
-            override fun onLike(post: Post) = viewModel.like(post.id)
+            override fun onLike(post: Post) {
+                if (!authViewModel.isAuthenticated) {
+                    showAuthDialog()
+                    return
+                }
+                viewModel.like(post.id)
+            }
 
             override fun onRemove(post: Post) = viewModel.removeById(post.id)
 
@@ -71,6 +80,7 @@ class FeedFragment : Fragment() {
                         .show()
                 }
             }
+
             override fun onImage(url: String) {
                 findNavController().navigate(
                     R.id.fullImageFragment,
@@ -102,10 +112,26 @@ class FeedFragment : Fragment() {
         }
 
         binding.fab.setOnClickListener {
+            if (!authViewModel.isAuthenticated) {
+                showAuthDialog()
+                return@setOnClickListener
+            }
+
             viewModel.clearEdit()
             findNavController().navigate(R.id.action_feedFragment_to_newPostFragment)
         }
 
         return binding.root
+    }
+
+    private fun showAuthDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.auth_required_title)
+            .setMessage(R.string.auth_required_message)
+            .setPositiveButton(R.string.sign_in) { _, _ ->
+                findNavController().navigate(R.id.signInFragment)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 }
