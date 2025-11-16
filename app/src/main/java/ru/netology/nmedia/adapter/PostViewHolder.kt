@@ -2,6 +2,7 @@ package ru.netology.nmedia.adapter
 
 import android.view.View
 import androidx.appcompat.widget.PopupMenu
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import ru.netology.nmedia.R
@@ -58,6 +59,8 @@ class PostViewHolder(
         likeIcon.setOnClickListener { onInteractionListener.onLike(post) }
 
         shareButton.setOnClickListener { onInteractionListener.onShare(post) }
+
+        menu.isVisible = post.ownedByMe
 
         menu.setOnClickListener {
             PopupMenu(it.context, it).apply {

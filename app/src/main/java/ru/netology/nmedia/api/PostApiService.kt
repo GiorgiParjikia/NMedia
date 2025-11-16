@@ -1,72 +1,74 @@
 package ru.netology.nmedia.api
 
 import okhttp3.MultipartBody
-import ru.netology.nmedia.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.*
+import ru.netology.nmedia.BuildConfig
+import ru.netology.nmedia.auth.AppAuth
 import ru.netology.nmedia.dto.Media
 import ru.netology.nmedia.dto.Post
-import java.util.concurrent.TimeUnit
 
 private const val BASE_URL = "${BuildConfig.BASE_URL}/api/slow/"
 
-private val client = OkHttpClient.Builder()
-    .connectTimeout(30, TimeUnit.SECONDS)
-    .readTimeout(30, TimeUnit.SECONDS)
-    .writeTimeout(30, TimeUnit.SECONDS)
-    .apply {
-        if (BuildConfig.DEBUG) {
-            addInterceptor(
-                HttpLoggingInterceptor().apply {
-                    level = HttpLoggingInterceptor.Level.BODY
-                }
-            )
-        }
+private val logging = HttpLoggingInterceptor().apply {
+    if (BuildConfig.DEBUG) {
+        level = HttpLoggingInterceptor.Level.BODY
     }
+}
+
+private val okHttp = OkHttpClient.Builder()
+    .addInterceptor { chain ->
+        val request = AppAuth.getInstance().data.value?.let { token ->
+            chain.request().newBuilder()
+                .addHeader("Authorization", token.token)
+                .build()
+        } ?: chain.request()
+
+        chain.proceed(request)
+    }
+    .addInterceptor(logging)
     .build()
+
 
 private val retrofit = Retrofit.Builder()
-    .client(client)
     .baseUrl(BASE_URL)
     .addConverterFactory(GsonConverterFactory.create())
+    .client(okHttp)
     .build()
 
-interface PostApiService {
-
-    // ====== Получение всех постов ======
+interface PostsApiService {
     @GET("posts")
-    suspend fun getAll(): List<Post>
-
-    // ====== Сохранение ======
-    @POST("posts")
-    suspend fun save(@Body post: Post): Post
-
-    // ====== Удаление ======
-    @DELETE("posts/{id}")
-    suspend fun deleteById(@Path("id") id: Long)
-
-    // ====== Лайк ======
-    @POST("posts/{id}/likes")
-    suspend fun likeById(@Path("id") id: Long): Post
-
-    // ====== Дизлайк ======
-    @DELETE("posts/{id}/likes")
-    suspend fun dislikeById(@Path("id") id: Long): Post
+    suspend fun getAll(): Response<List<Post>>
 
     @GET("posts/{id}/newer")
-    suspend fun getNewer(@Path("id") id: Long): List<Post>
+    suspend fun getNewer(@Path("id") id: Long): Response<List<Post>>
+
+    @GET("posts/{id}")
+    suspend fun getById(@Path("id") id: Long): Response<Post>
+
+    @POST("posts")
+    suspend fun save(@Body post: Post): Response<Post>
+
+    @DELETE("posts/{id}")
+    suspend fun removeById(@Path("id") id: Long): Response<Unit>
+
+    @POST("posts/{id}/likes")
+    suspend fun likeById(@Path("id") id: Long): Response<Post>
+
+    @DELETE("posts/{id}/likes")
+    suspend fun dislikeById(@Path("id") id: Long): Response<Post>
 
     @Multipart
     @POST("media")
-    suspend fun upload(@Part file: MultipartBody.Part): Media
-
+    suspend fun upload(@Part media: MultipartBody.Part): Response<Media>
 }
 
-object PostApi {
-    val retrofitService: PostApiService by lazy {
-        retrofit.create(PostApiService::class.java)
+object PostsApi {
+    val service: PostsApiService by lazy {
+        retrofit.create(PostsApiService::class.java)
     }
 }

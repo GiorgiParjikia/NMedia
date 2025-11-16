@@ -8,17 +8,26 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
+import androidx.core.view.MenuProvider
 import androidx.navigation.findNavController
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.firebase.messaging.FirebaseMessaging
 import ru.netology.nmedia.R
+import ru.netology.nmedia.auth.AppAuth
+import ru.netology.nmedia.viewmodel.AuthViewModel
 
 class AppActivity : AppCompatActivity(R.layout.activity_app) {
+
+    private val viewModel by viewModels<AuthViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,30 +36,72 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
         checkGoogleApiAvailability()
         createDefaultNotificationChannel()
 
+        // -------- MenuProvider --------
+        val menuProvider = object : MenuProvider {
+
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.auth_menu, menu)
+            }
+
+            override fun onPrepareMenu(menu: Menu) {
+                val authorized = viewModel.isAuthenticated
+
+                menu.setGroupVisible(R.id.authorized, authorized)
+                menu.setGroupVisible(R.id.unauthorized, !authorized)
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean =
+                when (menuItem.itemId) {
+                    R.id.signIn -> {
+                        AppAuth.getInstance().setAuth(5, "x-token")
+                        true
+                    }
+
+                    R.id.signUp -> {
+                        AppAuth.getInstance().setAuth(5, "x-token")
+                        true
+                    }
+
+                    R.id.logout -> {
+                        AppAuth.getInstance().removeAuth()
+                        true
+                    }
+
+                    else -> false
+                }
+        }
+
+        addMenuProvider(menuProvider, this)
+
+        // ---- ВАЖНО: корректное обновление меню ----
+        viewModel.data.observe(this) {
+            invalidateMenu()     // <-- единственный рабочий вариант
+        }
+
+        // ---- FCM ----
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
             Log.i(TAG, "fcm_token: $token")
         }
 
-        // обработка запуска из уведомления
+        // ---- Уведомления ----
         handleIntentIfAny(intent)
     }
 
-    // ВАЖНО: сигнатура без nullable и без 'protected'
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        setIntent(intent)               // setIntent требует не-null
+        setIntent(intent)
         handleIntentIfAny(intent)
     }
 
-    // Обработчик извлекает postId, если он есть
     private fun handleIntentIfAny(intent: Intent?) {
         val postId = intent?.getLongExtra("postId", 0L) ?: 0L
         if (postId != 0L) {
             Log.i(TAG, "Open from notification, postId=$postId")
 
-            val navController = findNavController(R.id.nav_host_fragment)
-            val args = bundleOf("postId" to postId)
-            navController.navigate(R.id.action_feedFragment_to_singlePostFragment, args)
+            findNavController(R.id.nav_host_fragment).navigate(
+                R.id.action_feedFragment_to_singlePostFragment,
+                bundleOf("postId" to postId)
+            )
         }
     }
 

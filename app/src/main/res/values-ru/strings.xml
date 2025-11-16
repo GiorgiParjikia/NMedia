@@ -22,5 +22,8 @@
     <string name="show_new_posts">Показать новые посты (%1$d)</string>
     <string name="Remove">Удалить</string>
     <string name="image_pick_error">Ошибка изображения</string>
+    <string name="logout">Выход</string>
+    <string name="sign_in" >Войти</string>
+    <string name="sign_up" >Зарегистрироватся</string>
 
 </resources>

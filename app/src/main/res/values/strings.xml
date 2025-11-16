@@ -31,6 +31,9 @@
     <string name="show_new_posts">Show new posts (%1$d)</string>
     <string name="Remove">Remove</string>
     <string name="image_pick_error" >Image Pick Error</string>
+    <string name="logout" >Log Out</string>
+    <string name="sign_in" >Sign In</string>
+    <string name="sign_up" >Sign Up</string>
 
 
 </resources>

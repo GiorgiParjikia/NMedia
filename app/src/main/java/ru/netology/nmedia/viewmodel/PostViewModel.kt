@@ -4,9 +4,13 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import ru.netology.nmedia.auth.AppAuth
 import ru.netology.nmedia.db.AppDb
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.model.FeedModel
@@ -20,6 +24,7 @@ import java.io.File
 private val empty = Post(
     id = 0,
     author = "Giorgi",
+    authorId = 0,
     authorAvatar = null,
     published = 0,
     content = "",
@@ -28,6 +33,7 @@ private val empty = Post(
     attachment = null
 )
 
+@ExperimentalCoroutinesApi
 class PostViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = PostRepositoryNetworkImpl(
@@ -58,10 +64,23 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     val postCreated: LiveData<Unit> get() = _postCreated
 
     // FLOW → LiveData
-    val data: LiveData<FeedModel> = repository.data
-        .map { FeedModel(it, it.isEmpty()) }
-        .catch { _state.postValue(FeedModelState(error = true)) }
-        .asLiveData(Dispatchers.Default)
+    // FLOW → LiveData
+    val data: LiveData<FeedModel> =
+        AppAuth.getInstance().data
+            .flatMapLatest { token ->
+                repository.data
+                    .map { posts ->
+                        posts.map { post ->
+                            post.copy(ownedByMe = post.authorId == token?.id)
+                        }
+                    }
+                    .map(::FeedModel)
+            }
+            .catch { e ->
+                e.printStackTrace()
+                _state.postValue(FeedModelState(error = true))
+            }
+            .asLiveData(Dispatchers.Default)
 
     private val _newerCount = MutableLiveData(0)
     val newerCount: LiveData<Int> get() = _newerCount
