@@ -13,10 +13,12 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.google.gson.Gson
 import ru.netology.nmedia.R
 import ru.netology.nmedia.activity.AppActivity
 import ru.netology.nmedia.auth.AppAuth
 import ru.netology.nmedia.model.Action
+import ru.netology.nmedia.model.PushContent
 
 class FCMService : FirebaseMessagingService() {
 
@@ -28,10 +30,14 @@ class FCMService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         Log.i(TAG, "fcm_message: ${message.data}")
 
-        val recipientId = message.data["recipientId"]?.toLongOrNull()
-        val content = message.data["content"]
+        val rawContent = message.data["content"] ?: return
+        val push = Gson().fromJson(rawContent, PushContent::class.java)
+
+        val recipientId = push.recipientId
+        val content = push.content
 
         val myId = AppAuth.getInstance().authStateFlow.value?.id
+
 
         if (content != null) {
             when {
