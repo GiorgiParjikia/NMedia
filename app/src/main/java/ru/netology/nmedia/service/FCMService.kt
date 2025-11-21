@@ -36,8 +36,8 @@ class FCMService : FirebaseMessagingService() {
         val recipientId = push.recipientId
         val content = push.content
 
-        val myId = AppAuth.getInstance().authStateFlow.value?.id
-
+        val myId = AppAuth.getInstance().authStateFlow.value?.id ?: 0L
+        // 🔥 теперь myId = 0L для анонимов (как требует сервер)
 
         if (content != null) {
             when {
@@ -63,7 +63,7 @@ class FCMService : FirebaseMessagingService() {
             }
         }
 
-        // ===== обычные push: like, new_post, unknown =====
+        // обычные push
         val action = Action.from(message.data["action"])
 
         when (action) {
