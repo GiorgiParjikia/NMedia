@@ -1,13 +1,21 @@
-// ru/netology/nmedia/viewmodel/SignUpViewModel.kt
 package ru.netology.nmedia.viewmodel
 
-import androidx.lifecycle.*
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
-import ru.netology.nmedia.api.PostsApi
+import ru.netology.nmedia.api.PostsApiService
 import ru.netology.nmedia.auth.AppAuth
 import ru.netology.nmedia.dto.Token
+import javax.inject.Inject
 
-class SignUpViewModel : ViewModel() {
+@HiltViewModel
+class SignUpViewModel @Inject constructor(
+    private val api: PostsApiService,
+    private val appAuth: AppAuth,
+) : ViewModel() {
 
     private val _state = MutableLiveData(AuthState())
     val state: LiveData<AuthState> = _state
@@ -25,10 +33,12 @@ class SignUpViewModel : ViewModel() {
             try {
                 _state.value = AuthState(loading = true)
 
-                val response = PostsApi.service.register(login, pass, name)
+                val response = api.register(login, pass, name)
 
                 if (!response.isSuccessful) {
-                    _state.value = AuthState(error = "Ошибка регистрации: ${response.code()}")
+                    _state.value = AuthState(
+                        error = "Ошибка регистрации: ${response.code()}"
+                    )
                     return@launch
                 }
 
@@ -38,7 +48,8 @@ class SignUpViewModel : ViewModel() {
                         return@launch
                     }
 
-                AppAuth.getInstance().setAuth(token.id, token.token)
+                appAuth.setAuth(token.id, token.token)
+
                 _state.value = AuthState()
                 _authSuccess.value = Unit
 

@@ -1,4 +1,3 @@
-// ru/netology/nmedia/activity/SignInFragment.kt
 package ru.netology.nmedia.activity
 
 import android.os.Bundle
@@ -9,10 +8,12 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
+import dagger.hilt.android.AndroidEntryPoint
 import ru.netology.nmedia.R
 import ru.netology.nmedia.databinding.FragmentSignInBinding
 import ru.netology.nmedia.viewmodel.SignInViewModel
 
+@AndroidEntryPoint
 class SignInFragment : Fragment() {
 
     private var _binding: FragmentSignInBinding? = null
@@ -23,33 +24,29 @@ class SignInFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?,
+        savedInstanceState: Bundle?
     ): View {
         _binding = FragmentSignInBinding.inflate(inflater, container, false)
 
-        // Клик по кнопке Войти
         binding.signInButton.setOnClickListener {
             val login = binding.loginField.text?.toString().orEmpty()
             val pass = binding.passwordField.text?.toString().orEmpty()
-
             viewModel.signIn(login, pass)
         }
 
-        // 🔥 Переход на регистрацию
         binding.toSignUp.setOnClickListener {
             findNavController().navigate(R.id.signUpFragment)
         }
 
-        // Обновление UI
         viewModel.state.observe(viewLifecycleOwner) { state ->
             binding.progress.visibility = if (state.loading) View.VISIBLE else View.GONE
-            binding.errorText.text = state.error.orEmpty()
-            binding.errorText.visibility = if (state.error != null) View.VISIBLE else View.GONE
 
             state.error?.let {
-                if (it.isNotBlank()) {
-                    Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
-                }
+                binding.errorText.text = it
+                binding.errorText.visibility = View.VISIBLE
+                Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+            } ?: run {
+                binding.errorText.visibility = View.GONE
             }
         }
 

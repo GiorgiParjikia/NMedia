@@ -1,4 +1,3 @@
-// ru/netology/nmedia/activity/SignUpFragment.kt
 package ru.netology.nmedia.activity
 
 import android.os.Bundle
@@ -9,9 +8,11 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
+import dagger.hilt.android.AndroidEntryPoint
 import ru.netology.nmedia.databinding.FragmentSignUpBinding
 import ru.netology.nmedia.viewmodel.SignUpViewModel
 
+@AndroidEntryPoint
 class SignUpFragment : Fragment() {
 
     private var _binding: FragmentSignUpBinding? = null
@@ -22,7 +23,7 @@ class SignUpFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?,
+        savedInstanceState: Bundle?
     ): View {
         _binding = FragmentSignUpBinding.inflate(inflater, container, false)
 
@@ -37,13 +38,13 @@ class SignUpFragment : Fragment() {
 
         viewModel.state.observe(viewLifecycleOwner) { state ->
             binding.progress.visibility = if (state.loading) View.VISIBLE else View.GONE
-            binding.errorText.text = state.error.orEmpty()
-            binding.errorText.visibility = if (state.error != null) View.VISIBLE else View.GONE
 
             state.error?.let {
-                if (it.isNotBlank()) {
-                    Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
-                }
+                binding.errorText.text = it
+                binding.errorText.visibility = View.VISIBLE
+                Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+            } ?: run {
+                binding.errorText.visibility = View.GONE
             }
         }
 

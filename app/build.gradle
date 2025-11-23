@@ -2,8 +2,12 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.kapt")
+
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
+
+    // Hilt
+    id("com.google.dagger.hilt.android")
 }
 
 def gson_version = "2.11.0"
@@ -42,12 +46,11 @@ android {
         }
     }
 
-
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
     kotlinOptions {
         jvmTarget = "17"
     }
@@ -87,7 +90,6 @@ dependencies {
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
     implementation "androidx.coordinatorlayout:coordinatorlayout:1.2.0"
 
-    // Совместимые версии OkHttp + Logging
     implementation "com.squareup.okhttp3:okhttp:$okhttp_version"
     implementation "com.squareup.okhttp3:logging-interceptor:$okhttp_logging_version"
 
@@ -101,6 +103,10 @@ dependencies {
 
     // Image Picker
     implementation "com.github.dhaval2404:imagepicker:$imagepicker_version"
+
+    // Hilt
+    implementation "com.google.dagger:hilt-android:2.51.1"
+    kapt "com.google.dagger:hilt-android-compiler:2.51.1"
 
     testImplementation libs.junit
     androidTestImplementation libs.androidx.junit

@@ -16,19 +16,21 @@ import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.github.dhaval2404.imagepicker.ImagePicker
 import com.bumptech.glide.Glide
+import dagger.hilt.android.AndroidEntryPoint
 import ru.netology.nmedia.R
 import ru.netology.nmedia.databinding.FragmentNewPostBinding
 import ru.netology.nmedia.viewmodel.PostViewModel
 
+@AndroidEntryPoint
 class NewPostFragment : Fragment() {
 
     private val viewModel: PostViewModel by activityViewModels()
+
     private var _binding: FragmentNewPostBinding? = null
     private val binding get() = _binding!!
 
     private var suppressNextDraftSave = false
 
-    // ---------- Фото ----------
     private val photoLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == ImagePicker.RESULT_ERROR) {
@@ -51,7 +53,6 @@ class NewPostFragment : Fragment() {
     ): View {
         _binding = FragmentNewPostBinding.inflate(inflater, container, false)
 
-        // если создаём НОВЫЙ пост — очищаем фото
         if (viewModel.edited.value?.id == 0L) {
             viewModel.removePhoto()
         }
@@ -91,6 +92,7 @@ class NewPostFragment : Fragment() {
                             hideKeyboard()
                             true
                         }
+
                         else -> false
                     }
                 }
@@ -109,7 +111,6 @@ class NewPostFragment : Fragment() {
 
             binding.previewContainer.isVisible = true
 
-            // ✅ Glide умеет и content:// uri, и http://
             Glide.with(binding.preview)
                 .load(photo.uri)
                 .into(binding.preview)
@@ -164,9 +165,7 @@ class NewPostFragment : Fragment() {
 
         if (!suppressNextDraftSave) {
             val text = binding.edit.text.toString().trim()
-            if (text.isNotEmpty()) {
-                viewModel.saveDraft(text)
-            }
+            if (text.isNotEmpty()) viewModel.saveDraft(text)
         } else {
             suppressNextDraftSave = false
         }

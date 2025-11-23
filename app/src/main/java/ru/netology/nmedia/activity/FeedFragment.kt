@@ -15,6 +15,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.snackbar.Snackbar
+import dagger.hilt.android.AndroidEntryPoint
 import ru.netology.nmedia.R
 import ru.netology.nmedia.adapter.OnInteractionListener
 import ru.netology.nmedia.adapter.PostAdapter
@@ -23,6 +24,7 @@ import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.viewmodel.AuthViewModel
 import ru.netology.nmedia.viewmodel.PostViewModel
 
+@AndroidEntryPoint
 class FeedFragment : Fragment() {
 
     private val viewModel: PostViewModel by activityViewModels()
@@ -53,7 +55,9 @@ class FeedFragment : Fragment() {
                 viewModel.like(post.id)
             }
 
-            override fun onRemove(post: Post) = viewModel.removeById(post.id)
+            override fun onRemove(post: Post) {
+                viewModel.removeById(post.id)
+            }
 
             override fun onShare(post: Post) {
                 startActivity(

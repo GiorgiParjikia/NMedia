@@ -22,13 +22,19 @@ import androidx.navigation.findNavController
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.firebase.messaging.FirebaseMessaging
+import dagger.hilt.android.AndroidEntryPoint
 import ru.netology.nmedia.R
 import ru.netology.nmedia.auth.AppAuth
 import ru.netology.nmedia.viewmodel.AuthViewModel
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class AppActivity : AppCompatActivity(R.layout.activity_app) {
 
-    private val viewModel by viewModels<AuthViewModel>()
+    @Inject
+    lateinit var appAuth: AppAuth
+
+    private val viewModel: AuthViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,8 +51,6 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
 
             override fun onPrepareMenu(menu: Menu) {
                 val authorized = viewModel.isAuthenticated
-
-                // Показываем/скрываем группы
                 menu.setGroupVisible(R.id.authorized, authorized)
                 menu.setGroupVisible(R.id.unauthorized, !authorized)
             }
@@ -74,22 +78,22 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
                                 .setTitle(R.string.logout)
                                 .setMessage(R.string.logout_confirm_while_editing)
                                 .setPositiveButton(android.R.string.ok) { _, _ ->
-                                    AppAuth.getInstance().removeAuth()
+                                    appAuth.removeAuth()
                                     navController.popBackStack()
                                 }
                                 .setNegativeButton(android.R.string.cancel, null)
                                 .show()
-
                         } else {
                             AlertDialog.Builder(this@AppActivity)
                                 .setTitle(R.string.logout)
                                 .setMessage(R.string.logout_confirm)
                                 .setPositiveButton(android.R.string.ok) { _, _ ->
-                                    AppAuth.getInstance().removeAuth()
+                                    appAuth.removeAuth()
                                 }
                                 .setNegativeButton(android.R.string.cancel, null)
                                 .show()
                         }
+
                         true
                     }
 
@@ -100,17 +104,14 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
 
         addMenuProvider(menuProvider, this)
 
-        // обновление меню при авторизации
         viewModel.data.observe(this) {
             invalidateMenu()
         }
 
-        // FCM токен
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
             Log.i(TAG, token)
         }
 
-        // переход по уведомлению
         handleIntentIfAny(intent)
     }
 
@@ -133,6 +134,7 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
     private fun requestNotificationsPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         val permission = Manifest.permission.POST_NOTIFICATIONS
+
         if (ContextCompat.checkSelfPermission(this, permission) ==
             PackageManager.PERMISSION_GRANTED
         ) return
@@ -157,6 +159,7 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
             getString(R.string.app_name),
             NotificationManager.IMPORTANCE_HIGH
         )
+
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(channel)
     }

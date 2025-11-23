@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
-import ru.netology.nmedia.api.PostsApi
+import ru.netology.nmedia.api.PostsApiService
 import ru.netology.nmedia.dao.PostDao
 import ru.netology.nmedia.dto.Attachment
 import ru.netology.nmedia.dto.AttachmentType
@@ -16,9 +16,11 @@ import ru.netology.nmedia.entity.PostEntity
 import ru.netology.nmedia.error.AppError
 import java.io.File
 import java.io.IOException
+import javax.inject.Inject
 
-class PostRepositoryNetworkImpl(
+class PostRepositoryNetworkImpl @Inject constructor(
     private val dao: PostDao,
+    private val apiService: PostsApiService,
 ) : PostRepository {
 
     override val data = dao.getAll().map { list ->
@@ -31,7 +33,7 @@ class PostRepositoryNetworkImpl(
 
             try {
                 val latestId = dao.getLatestId() ?: 0L
-                val response = PostsApi.service.getNewer(latestId)
+                val response = apiService.getNewer(latestId)
 
                 val posts = response.body() ?: emptyList()
 
@@ -61,7 +63,7 @@ class PostRepositoryNetworkImpl(
     }
 
     override suspend fun getAllAsync() {
-        val response = PostsApi.service.getAll()
+        val response = apiService.getAll()
         val posts = response.body() ?: emptyList()
 
         dao.insert(
@@ -76,7 +78,7 @@ class PostRepositoryNetworkImpl(
         dao.removeById(id)
 
         try {
-            PostsApi.service.removeById(id)
+            apiService.removeById(id)
         } catch (e: IOException) {
             if (postToRemove != null) {
                 dao.insert(PostEntity.fromDto(postToRemove))
@@ -99,9 +101,9 @@ class PostRepositoryNetworkImpl(
 
         return try {
             val response = if (liked) {
-                PostsApi.service.likeById(id)
+                apiService.likeById(id)
             } else {
-                PostsApi.service.dislikeById(id)
+                apiService.dislikeById(id)
             }
 
             val result = response.body() ?: updated
@@ -129,7 +131,7 @@ class PostRepositoryNetworkImpl(
                     )
                 } else post
 
-            val response = PostsApi.service.save(postWithAttachment)
+            val response = apiService.save(postWithAttachment)
             val saved = response.body() ?: postWithAttachment
 
             dao.insert(PostEntity.fromDto(saved, isLocal = false))
@@ -146,7 +148,7 @@ class PostRepositoryNetworkImpl(
     }
 
     private suspend fun upload(file: File): Media {
-        val response = PostsApi.service.upload(
+        val response = apiService.upload(
             MultipartBody.Part.createFormData(
                 "file",
                 file.name,
@@ -161,7 +163,7 @@ class PostRepositoryNetworkImpl(
 
         for (post in unsynced) {
             try {
-                val response = PostsApi.service.save(post.toDto())
+                val response = apiService.save(post.toDto())
                 val saved = response.body() ?: continue
                 dao.insert(PostEntity.fromDto(saved, isLocal = false))
             } catch (_: IOException) { }
@@ -169,7 +171,7 @@ class PostRepositoryNetworkImpl(
     }
 
     override suspend fun getAll() {
-        val response = PostsApi.service.getAll()
+        val response = apiService.getAll()
         val posts = response.body() ?: emptyList()
         dao.insert(posts.map { PostEntity.fromDto(it) })
     }

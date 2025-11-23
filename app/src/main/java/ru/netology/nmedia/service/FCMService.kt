@@ -14,31 +14,38 @@ import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.google.gson.Gson
+import dagger.hilt.android.AndroidEntryPoint
 import ru.netology.nmedia.R
 import ru.netology.nmedia.activity.AppActivity
 import ru.netology.nmedia.auth.AppAuth
 import ru.netology.nmedia.model.Action
 import ru.netology.nmedia.model.PushContent
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class FCMService : FirebaseMessagingService() {
+
+    @Inject
+    lateinit var appAuth: AppAuth
+
+    private val gson = Gson()
 
     override fun onNewToken(token: String) {
         Log.i(TAG, "fcm_token: $token")
-        AppAuth.getInstance().sendPushToken(token)
+        appAuth.sendPushToken(token)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
         Log.i(TAG, "fcm_message: ${message.data}")
 
-        val rawContent = message.data["content"] ?: return
-        val push = Gson().fromJson(rawContent, PushContent::class.java)
+        val raw = message.data["content"]
+        val push = raw?.let { gson.fromJson(it, PushContent::class.java) }
+        val recipientId = push?.recipientId
+        val content = push?.content
 
-        val recipientId = push.recipientId
-        val content = push.content
+        val myId = appAuth.authStateFlow.value?.id ?: 0L
 
-        val myId = AppAuth.getInstance().authStateFlow.value?.id ?: 0L
-        // 🔥 теперь myId = 0L для анонимов (как требует сервер)
-
+        // --------- PUSH logic ---------
         if (content != null) {
             when {
                 recipientId == null -> {
@@ -52,27 +59,26 @@ class FCMService : FirebaseMessagingService() {
                 }
 
                 recipientId == 0L && myId != 0L -> {
-                    AppAuth.getInstance().sendPushToken()
+                    appAuth.sendPushToken()
                     return
                 }
 
-                recipientId != 0L && recipientId != myId -> {
-                    AppAuth.getInstance().sendPushToken()
+                recipientId != myId -> {
+                    appAuth.sendPushToken()
                     return
                 }
             }
         }
 
-        // обычные push
-        val action = Action.from(message.data["action"])
-
-        when (action) {
+        // -------- ACTIONS --------
+        when (Action.from(message.data["action"])) {
             Action.LIKE -> handleLike(message.data)
             Action.NEW_POST -> handleNewPost(message.data)
-            Action.UNKNOWN -> handleUnknown(message.data)
+            Action.UNKNOWN -> handleUnknown()
         }
     }
 
+    // ---------------- LIKE ----------------
     private fun handleLike(data: Map<String, String>) {
         val userName = data["userName"].orEmpty()
         val postId = data["postId"].orEmpty()
@@ -80,10 +86,13 @@ class FCMService : FirebaseMessagingService() {
         val title = if (userName.isNotBlank()) "$userName поставил лайк"
         else getString(R.string.app_name)
 
-        val text = if (postId.isNotBlank()) "Вашему посту #$postId" else "Вашему посту"
+        val text = if (postId.isNotBlank()) "Вашему посту #$postId"
+        else "Вашему посту"
+
         showNotification(title, text)
     }
 
+    // ---------------- NEW POST ----------------
     private fun handleNewPost(data: Map<String, String>) {
         val userName = data["userName"].orEmpty()
         val postId = data["postId"]?.toLongOrNull() ?: 0L
@@ -91,8 +100,7 @@ class FCMService : FirebaseMessagingService() {
 
         val title = if (userName.isNotBlank())
             "$userName опубликовал новый пост:"
-        else
-            getString(R.string.app_name)
+        else getString(R.string.app_name)
 
         val intent = Intent(this, AppActivity::class.java).apply {
             action = Intent.ACTION_VIEW
@@ -117,25 +125,24 @@ class FCMService : FirebaseMessagingService() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            NotificationManagerCompat.from(this).notify(postId.hashCode(), notif)
+        if (canNotify()) {
+            NotificationManagerCompat.from(this)
+                .notify(postId.hashCode(), notif)
         }
     }
 
-    private fun handleUnknown(data: Map<String, String>) {
+    // ---------------- UNKNOWN ----------------
+    private fun handleUnknown() {
         showNotification(
             getString(R.string.app_name),
             "Пришло уведомление с неизвестным типом действия"
         )
     }
 
+    // ---------------- COMMON NOTIFICATION ----------------
     private fun showNotification(title: String, text: String) {
         val intent = Intent(this, AppActivity::class.java)
+
         val pi = PendingIntent.getActivity(
             this,
             title.hashCode(),
@@ -153,14 +160,17 @@ class FCMService : FirebaseMessagingService() {
             .setAutoCancel(true)
             .build()
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
+        if (canNotify()) {
             NotificationManagerCompat.from(this).notify(title.hashCode(), notif)
         }
+    }
+
+    private fun canNotify(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun ensureChannel() {
