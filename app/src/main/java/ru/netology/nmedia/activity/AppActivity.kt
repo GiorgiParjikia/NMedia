@@ -34,6 +34,12 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
     @Inject
     lateinit var appAuth: AppAuth
 
+    @Inject
+    lateinit var firebaseMessaging: FirebaseMessaging     // <-- внедрено через DI
+
+    @Inject
+    lateinit var googleApiAvailability: GoogleApiAvailability   // <-- внедрено через DI
+
     private val viewModel: AuthViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,7 +65,6 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
                 val navController = findNavController(R.id.nav_host_fragment)
 
                 return when (menuItem.itemId) {
-
                     R.id.signIn -> {
                         navController.navigate(R.id.signInFragment)
                         true
@@ -108,7 +113,8 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
             invalidateMenu()
         }
 
-        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+        // ---------- теперь через DI ----------
+        firebaseMessaging.token.addOnSuccessListener { token ->
             Log.i(TAG, token)
         }
 
@@ -143,11 +149,11 @@ class AppActivity : AppCompatActivity(R.layout.activity_app) {
     }
 
     private fun checkGoogleApiAvailability() {
-        with(GoogleApiAvailability.getInstance()) {
-            val code = isGooglePlayServicesAvailable(this@AppActivity)
-            if (code != ConnectionResult.SUCCESS && isUserResolvableError(code)) {
-                getErrorDialog(this@AppActivity, code, 9000)?.show()
-            }
+        val code = googleApiAvailability.isGooglePlayServicesAvailable(this)
+        if (code != ConnectionResult.SUCCESS &&
+            googleApiAvailability.isUserResolvableError(code)
+        ) {
+            googleApiAvailability.getErrorDialog(this, code, 9000)?.show()
         }
     }
 
