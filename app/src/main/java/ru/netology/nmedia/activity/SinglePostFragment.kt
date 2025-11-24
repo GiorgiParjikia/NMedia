@@ -8,8 +8,12 @@ import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import androidx.paging.map
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import ru.netology.nmedia.R
 import ru.netology.nmedia.databinding.FragmentSinglePostBinding
 import ru.netology.nmedia.dto.Post
@@ -35,15 +39,19 @@ class SinglePostFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?,
+        savedInstanceState: Bundle?
     ): View {
         _binding = FragmentSinglePostBinding.inflate(inflater, container, false)
 
-        binding.post.root.setOnClickListener(null)
-
-        viewModel.data.observe(viewLifecycleOwner) { feed ->
-            val post = feed.posts.firstOrNull { it.id == postId } ?: return@observe
-            bindPost(post)
+        // ИЩЕМ ПОСТ В PAGINGDATA
+        lifecycleScope.launch {
+            viewModel.data.collectLatest { pagingData ->
+                pagingData.map { post ->
+                    if (post.id == postId) {
+                        bindPost(post)
+                    }
+                }
+            }
         }
 
         return binding.root
@@ -78,13 +86,11 @@ class SinglePostFragment : Fragment() {
                 inflate(R.menu.post_options)
                 setOnMenuItemClickListener { item ->
                     when (item.itemId) {
-
                         R.id.remove -> {
                             viewModel.removeById(post.id)
                             findNavController().popBackStack()
                             true
                         }
-
                         R.id.edit -> {
                             viewModel.edit(post)
                             findNavController().navigate(
@@ -92,7 +98,6 @@ class SinglePostFragment : Fragment() {
                             )
                             true
                         }
-
                         else -> false
                     }
                 }

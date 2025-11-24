@@ -12,10 +12,13 @@ import androidx.core.net.toUri
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import androidx.paging.LoadState
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
 import ru.netology.nmedia.R
 import ru.netology.nmedia.adapter.OnInteractionListener
 import ru.netology.nmedia.adapter.PostAdapter
@@ -97,13 +100,20 @@ class FeedFragment : Fragment() {
         binding.list.adapter = adapter
 
         binding.swipeRefresh.setOnRefreshListener {
-            viewModel.loadPosts()
+            adapter.refresh()
+        }
+        lifecycleScope.launchWhenCreated {
+            viewModel.data.collectLatest {
+                adapter.submitData(it)
+            }
         }
 
-        viewModel.data.observe(viewLifecycleOwner) { model ->
-            adapter.submitList(model.posts)
-            binding.empty.isVisible = model.empty
-            binding.swipeRefresh.isRefreshing = false
+        lifecycleScope.launchWhenCreated {
+            adapter.loadStateFlow.collectLatest {
+                binding.swipeRefresh.isRefreshing = it.refresh is LoadState.Loading
+                        ||it.append is LoadState.Loading
+                        ||it.prepend is LoadState.Loading
+            }
         }
 
         viewModel.state.observe(viewLifecycleOwner) { state ->

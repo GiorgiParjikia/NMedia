@@ -18,6 +18,8 @@ def play_services_base_version = "18.5.0"
 def imagepicker_version = "2.1"
 def okhttp_version = "4.12.0"
 def okhttp_logging_version = "4.12.0"
+def paging_version = "3.3.2"
+
 
 android {
     namespace 'ru.netology.nmedia'
@@ -107,6 +109,12 @@ dependencies {
     // Hilt
     implementation "com.google.dagger:hilt-android:2.51.1"
     kapt "com.google.dagger:hilt-android-compiler:2.51.1"
+
+    // Paging 3
+    implementation "androidx.paging:paging-runtime:3.3.2"
+    implementation "androidx.paging:paging-common-ktx:3.3.2" // для тестов/Flow
+
+
 
     testImplementation libs.junit
     androidTestImplementation libs.androidx.junit

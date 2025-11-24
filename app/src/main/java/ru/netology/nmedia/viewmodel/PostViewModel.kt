@@ -1,17 +1,22 @@
 package ru.netology.nmedia.viewmodel
 
 import android.net.Uri
-import androidx.lifecycle.*
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.map
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import ru.netology.nmedia.auth.AppAuth
 import ru.netology.nmedia.dto.Post
-import ru.netology.nmedia.model.FeedModel
 import ru.netology.nmedia.model.FeedModelState
 import ru.netology.nmedia.model.PhotoModel
 import ru.netology.nmedia.repository.DraftRepository
@@ -33,7 +38,7 @@ private val empty = Post(
 )
 
 @HiltViewModel
-@ExperimentalCoroutinesApi
+@OptIn(ExperimentalCoroutinesApi::class)
 class PostViewModel @Inject constructor(
     private val repository: PostRepository,
     private val draftRepo: DraftRepository,
@@ -51,38 +56,25 @@ class PostViewModel @Inject constructor(
     private val _postCreated = SingleLiveEvent<Unit>()
     val postCreated: LiveData<Unit> = _postCreated
 
-    val data: LiveData<FeedModel> =
+    // --------- Paging 3 + авторизация ---------
+    val data: Flow<PagingData<Post>> =
         appAuth.data
             .flatMapLatest { token ->
                 repository.data
-                    .map { posts ->
-                        posts.map {
-                            it.copy(ownedByMe = it.authorId == token?.id)
+                    .map { pagingData ->
+                        pagingData.map { post ->
+                            post.copy(ownedByMe = post.authorId == token?.id)
                         }
                     }
-                    .map(::FeedModel)
             }
-            .catch {
-                _state.postValue(FeedModelState(error = true))
-            }
-            .asLiveData(Dispatchers.Default)
+            .flowOn(Dispatchers.Default)
 
+    // Можно оставить, если в будущем добавишь "новые посты"
     private val _newerCount = MutableLiveData(0)
     val newerCount: LiveData<Int> = _newerCount
 
     init {
         loadPosts()
-
-        data.switchMap { feed ->
-            val last = feed.posts.firstOrNull()?.id ?: 0L
-            repository.getNewer(last)
-                .catch { _state.postValue(FeedModelState(error = true)) }
-                .asLiveData()
-        }.observeForever { count ->
-            if (count != null) {
-                _newerCount.value = (_newerCount.value ?: 0) + count
-            }
-        }
     }
 
     // -----------------------------------
@@ -102,8 +94,13 @@ class PostViewModel @Inject constructor(
     fun edit(post: Post) {
         edited.value = post
         post.attachment?.let {
-            _photo.value = PhotoModel(Uri.parse("http://10.0.2.2:9999/media/${it.url}"), null)
-        } ?: run { _photo.value = null }
+            _photo.value = PhotoModel(
+                Uri.parse("http://10.0.2.2:9999/media/${it.url}"),
+                null
+            )
+        } ?: run {
+            _photo.value = null
+        }
     }
 
     fun clearEdit() {
