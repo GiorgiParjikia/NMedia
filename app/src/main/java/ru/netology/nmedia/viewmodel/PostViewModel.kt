@@ -25,6 +25,7 @@ import ru.netology.nmedia.util.SingleLiveEvent
 import java.io.File
 import javax.inject.Inject
 
+
 private val empty = Post(
     id = 0,
     author = "Giorgi",
@@ -56,7 +57,9 @@ class PostViewModel @Inject constructor(
     private val _postCreated = SingleLiveEvent<Unit>()
     val postCreated: LiveData<Unit> = _postCreated
 
-    // --------- Paging 3 + авторизация ---------
+    // -------------------------
+    // Paging 3 + Auth Refresh
+    // -------------------------
     val data: Flow<PagingData<Post>> =
         appAuth.data
             .flatMapLatest { token ->
@@ -69,7 +72,6 @@ class PostViewModel @Inject constructor(
             }
             .flowOn(Dispatchers.Default)
 
-    // Можно оставить, если в будущем добавишь "новые посты"
     private val _newerCount = MutableLiveData(0)
     val newerCount: LiveData<Int> = _newerCount
 
@@ -77,9 +79,9 @@ class PostViewModel @Inject constructor(
         loadPosts()
     }
 
-    // -----------------------------------
+    // -------------------------
     // Photo
-    // -----------------------------------
+    // -------------------------
     fun updatePhoto(uri: Uri, file: File) {
         _photo.value = PhotoModel(uri, file)
     }
@@ -88,9 +90,9 @@ class PostViewModel @Inject constructor(
         _photo.value = null
     }
 
-    // -----------------------------------
+    // -------------------------
     // Editing
-    // -----------------------------------
+    // -------------------------
     fun edit(post: Post) {
         edited.value = post
         post.attachment?.let {
@@ -116,9 +118,9 @@ class PostViewModel @Inject constructor(
         }
     }
 
-    // -----------------------------------
+    // -------------------------
     // Save
-    // -----------------------------------
+    // -------------------------
     fun save() {
         viewModelScope.launch {
             edited.value?.let { post ->
@@ -138,9 +140,9 @@ class PostViewModel @Inject constructor(
         }
     }
 
-    // -----------------------------------
+    // -------------------------
     // Actions
-    // -----------------------------------
+    // -------------------------
     fun like(id: Long) = viewModelScope.launch {
         try {
             repository.likeById(id)
@@ -167,9 +169,9 @@ class PostViewModel @Inject constructor(
         }
     }
 
-    // -----------------------------------
+    // -------------------------
     // Draft
-    // -----------------------------------
+    // -------------------------
     fun saveDraft(text: String) = draftRepo.save(text)
     fun getDraft(): String = draftRepo.get()
     fun clearDraft() = draftRepo.clear()

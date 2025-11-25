@@ -2,6 +2,7 @@ package ru.netology.nmedia.repository
 
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
+import androidx.paging.map
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -26,22 +27,21 @@ class PostRepositoryNetworkImpl @Inject constructor(
 ) : PostRepository {
 
     override val data = Pager(
-        config = PagingConfig(pageSize = 10, enablePlaceholders = false),
-        pagingSourceFactory = {
-            PostPagingSource(
-                apiService
-            )
-        }
-    ).flow
+        PagingConfig(pageSize = 10, enablePlaceholders = false)
+    ) {
+        dao.pagingSource()
+    }.flow.map { pagingData ->
+        pagingData.map { it.toDto() }
+    }
 
+
+    // ----------- New Posts Counter ----------
     override fun getNewer(lastSeenId: Long): Flow<Int> = flow {
         while (true) {
             delay(10_000)
-
             try {
                 val latestId = dao.getLatestId() ?: 0L
                 val response = apiService.getNewer(latestId)
-
                 val posts = response.body() ?: emptyList()
 
                 if (posts.isNotEmpty()) {
@@ -56,7 +56,6 @@ class PostRepositoryNetworkImpl @Inject constructor(
                     )
                     emit(posts.size)
                 }
-
             } catch (e: Exception) {
                 throw AppError.from(e)
             }
@@ -69,6 +68,12 @@ class PostRepositoryNetworkImpl @Inject constructor(
         dao.revealHiddenPosts()
     }
 
+    // --------------- REFRESH (login/logout) ----------------
+    override suspend fun refresh() {
+        getAllAsync()
+    }
+
+    // ----------- Load ALL posts from server -----------
     override suspend fun getAllAsync() {
         val response = apiService.getAll()
         val posts = response.body() ?: emptyList()
@@ -80,6 +85,7 @@ class PostRepositoryNetworkImpl @Inject constructor(
         )
     }
 
+    // ----------- Remove -----------
     override suspend fun removeById(id: Long) {
         val postToRemove = dao.getPostById(id)?.toDto()
         dao.removeById(id)
@@ -94,6 +100,7 @@ class PostRepositoryNetworkImpl @Inject constructor(
         }
     }
 
+    // ----------- Like -----------
     override suspend fun likeById(id: Long): Post {
         val post = dao.getPostById(id)?.toDto()
             ?: throw RuntimeException("Post not found")
@@ -107,39 +114,32 @@ class PostRepositoryNetworkImpl @Inject constructor(
         dao.insert(PostEntity.fromDto(updated))
 
         return try {
-            val response = if (liked) {
-                apiService.likeById(id)
-            } else {
-                apiService.dislikeById(id)
-            }
-
+            val response = if (liked) apiService.likeById(id) else apiService.dislikeById(id)
             val result = response.body() ?: updated
-
             dao.insert(PostEntity.fromDto(result))
             result
-
         } catch (e: IOException) {
             dao.insert(PostEntity.fromDto(post))
             throw e
         }
     }
 
+    // ----------- Save -----------
     override suspend fun save(post: Post, photo: File?): Post {
         return try {
             val media = photo?.let { upload(it) }
 
-            val postWithAttachment =
-                if (media != null) {
-                    post.copy(
-                        attachment = Attachment(
-                            url = media.id,
-                            type = AttachmentType.IMAGE
-                        )
+            val modified = if (media != null) {
+                post.copy(
+                    attachment = Attachment(
+                        url = media.id,
+                        type = AttachmentType.IMAGE
                     )
-                } else post
+                )
+            } else post
 
-            val response = apiService.save(postWithAttachment)
-            val saved = response.body() ?: postWithAttachment
+            val response = apiService.save(modified)
+            val saved = response.body() ?: modified
 
             dao.insert(PostEntity.fromDto(saved, isLocal = false))
             saved
@@ -167,7 +167,6 @@ class PostRepositoryNetworkImpl @Inject constructor(
 
     suspend fun retryUnsyncedPosts() {
         val unsynced = dao.getUnsynced()
-
         for (post in unsynced) {
             try {
                 val response = apiService.save(post.toDto())

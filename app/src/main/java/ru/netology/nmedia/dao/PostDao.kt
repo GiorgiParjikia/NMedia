@@ -1,5 +1,6 @@
 package ru.netology.nmedia.dao
 
+import androidx.paging.PagingSource
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 import ru.netology.nmedia.entity.PostEntity
@@ -62,4 +63,8 @@ interface PostDao {
     // ===== Сделать все скрытые посты видимыми =====
     @Query("UPDATE Post_Entity SET isHidden = 0 WHERE isHidden = 1")
     suspend fun revealHiddenPosts()
+
+    @Query("SELECT * FROM Post_Entity ORDER BY id DESC")
+    fun pagingSource(): PagingSource<Int, PostEntity>
+
 }
