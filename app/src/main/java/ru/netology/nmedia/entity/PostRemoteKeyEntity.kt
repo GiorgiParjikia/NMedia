@@ -5,13 +5,12 @@ import androidx.room.PrimaryKey
 
 @Entity
 data class PostRemoteKeyEntity(
-    @PrimaryKey(autoGenerate = false)
+    @PrimaryKey
+    val type: KeyType,
     val id: Long,
-    val key: Long,
-    val type: KeyType
 ) {
     enum class KeyType {
         AFTER,
-        BEFORE,
+        BEFORE
     }
 }
