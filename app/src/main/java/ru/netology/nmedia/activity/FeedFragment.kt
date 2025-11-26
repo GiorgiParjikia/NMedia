@@ -102,6 +102,7 @@ class FeedFragment : Fragment() {
         binding.swipeRefresh.setOnRefreshListener {
             adapter.refresh()
         }
+
         lifecycleScope.launchWhenCreated {
             viewModel.data.collectLatest {
                 adapter.submitData(it)
@@ -109,15 +110,15 @@ class FeedFragment : Fragment() {
         }
 
         lifecycleScope.launchWhenCreated {
-            adapter.loadStateFlow.collectLatest {
-                binding.swipeRefresh.isRefreshing = it.refresh is LoadState.Loading
-                        ||it.append is LoadState.Loading
-                        ||it.prepend is LoadState.Loading
+            adapter.loadStateFlow.collectLatest { state ->
+
+                binding.swipeRefresh.isRefreshing = state.refresh is LoadState.Loading
+
+                binding.progress.isVisible = state.append is LoadState.Loading
             }
         }
 
         viewModel.state.observe(viewLifecycleOwner) { state ->
-            binding.progress.isVisible = state.loading
             if (state.error) {
                 Snackbar.make(binding.root, R.string.error_loading, Snackbar.LENGTH_LONG)
                     .setAction(R.string.retry) { viewModel.loadPosts() }

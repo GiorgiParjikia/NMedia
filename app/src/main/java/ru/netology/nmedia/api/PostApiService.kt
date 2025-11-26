@@ -9,42 +9,65 @@ import ru.netology.nmedia.dto.PushToken
 import ru.netology.nmedia.dto.Token
 
 interface PostsApiService {
-    // -------- POST'ы --------
-    @GET("posts")
-    suspend fun getAll(): Response<List<Post>>
 
+    // -------- ПАГИНАЦИЯ POSTS --------
+
+    // Самые новые посты (верх списка)
     @GET("posts/latest")
     suspend fun getLatest(@Query("count") count: Int): Response<List<Post>>
 
-    @GET("posts/{id}/newer")
-    suspend fun getNewer(@Path("id") id: Long): Response<List<Post>>
-
+    // Посты до ID (вниз)
     @GET("posts/{id}/before")
-    suspend fun getBefore(@Path("id") id: Long, @Query("count") count: Int): Response<List<Post>>
+    suspend fun getBefore(
+        @Path("id") id: Long,
+        @Query("count") count: Int
+    ): Response<List<Post>>
 
+    // Посты после ID (обновления)
     @GET("posts/{id}/after")
-    suspend fun getAfter(@Path("id") id: Long, @Query("count") count: Int): Response<List<Post>>
+    suspend fun getAfter(
+        @Path("id") id: Long,
+        @Query("count") count: Int
+    ): Response<List<Post>>
 
+    // Один пост
     @GET("posts/{id}")
-    suspend fun getById(@Path("id") id: Long): Response<Post>
+    suspend fun getById(
+        @Path("id") id: Long
+    ): Response<Post>
+
+    // -------- CRUD --------
 
     @POST("posts")
     suspend fun save(@Body post: Post): Response<Post>
 
     @DELETE("posts/{id}")
-    suspend fun removeById(@Path("id") id: Long): Response<Unit>
+    suspend fun removeById(
+        @Path("id") id: Long
+    ): Response<Unit>
+
+    // -------- LIKE / DISLIKE --------
 
     @POST("posts/{id}/likes")
-    suspend fun likeById(@Path("id") id: Long): Response<Post>
+    suspend fun likeById(
+        @Path("id") id: Long
+    ): Response<Post>
 
     @DELETE("posts/{id}/likes")
-    suspend fun dislikeById(@Path("id") id: Long): Response<Post>
+    suspend fun dislikeById(
+        @Path("id") id: Long
+    ): Response<Post>
+
+    // -------- ЗАГРУЗКА ФАЙЛОВ --------
 
     @Multipart
     @POST("media")
-    suspend fun upload(@Part media: MultipartBody.Part): Response<Media>
+    suspend fun upload(
+        @Part media: MultipartBody.Part
+    ): Response<Media>
 
     // -------- АУТЕНТИФИКАЦИЯ --------
+
     @FormUrlEncoded
     @POST("users/authentication")
     suspend fun authenticate(
@@ -53,6 +76,7 @@ interface PostsApiService {
     ): Response<Token>
 
     // -------- РЕГИСТРАЦИЯ --------
+
     @FormUrlEncoded
     @POST("users/registration")
     suspend fun register(
@@ -61,6 +85,10 @@ interface PostsApiService {
         @Field("name") name: String,
     ): Response<Token>
 
+    // -------- PUSH TOKEN --------
+
     @POST("users/push-tokens")
-    suspend fun sendPushToken(@Body token: PushToken)
+    suspend fun sendPushToken(
+        @Body token: PushToken
+    )
 }
