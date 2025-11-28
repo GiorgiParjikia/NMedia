@@ -62,7 +62,7 @@ interface PostDao {
     suspend fun revealHiddenPosts()
 
     // ===== ЕДИНСТВЕННЫЙ PagingSource =====
-    @Query("SELECT * FROM Post_Entity ORDER BY id DESC")
+    @Query("SELECT * FROM Post_Entity ORDER BY published DESC, id DESC")
     fun pagingSource(): PagingSource<Int, PostEntity>
 
     // ===== Очистка =====

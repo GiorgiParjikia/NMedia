@@ -18,4 +18,7 @@ interface PostRemoteKeyDao {
 
     @Query("DELETE FROM PostRemoteKeyEntity WHERE type = :type")
     suspend fun delete(type: KeyType)
+
+    @Query("DELETE FROM PostRemoteKeyEntity")
+    suspend fun clear()
 }

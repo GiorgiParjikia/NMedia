@@ -35,9 +35,9 @@ class PostRepositoryNetworkImpl @Inject constructor(
             enablePlaceholders = false
         ),
         remoteMediator = PostRemoteMediator(
-            apiService = apiService,
+            api = apiService,
             postDao = dao,
-            postRemoteKeyDao = postRemoteKeyDao,
+            keyDao = postRemoteKeyDao,
             db = appDb
         ),
         pagingSourceFactory = dao::pagingSource
@@ -112,8 +112,8 @@ class PostRepositoryNetworkImpl @Inject constructor(
 
         } catch (e: IOException) {
             val local = post.copy(
-                id = System.currentTimeMillis(),
-                published = System.currentTimeMillis()
+                id = -System.currentTimeMillis(),
+                published = 0L
             )
             dao.insert(PostEntity.fromDto(local, isLocal = true))
             local
