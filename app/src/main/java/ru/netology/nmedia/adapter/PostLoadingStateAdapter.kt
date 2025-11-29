@@ -11,6 +11,7 @@ import ru.netology.nmedia.databinding.ItemLoadingBinding
 class PostLoadingStateAdapter(
     private val retryListener: () -> Unit,
 ) : LoadStateAdapter<PostLoadingViewHolder>() {
+
     override fun onBindViewHolder(
         holder: PostLoadingViewHolder,
         loadState: LoadState
@@ -26,7 +27,7 @@ class PostLoadingStateAdapter(
             ItemLoadingBinding.inflate(
                 LayoutInflater.from(parent.context), parent, false),
             retryListener,
-            )
+        )
 }
 
 class PostLoadingViewHolder(

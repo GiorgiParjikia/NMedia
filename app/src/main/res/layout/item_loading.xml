@@ -9,11 +9,9 @@
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="20dp"
-        android:layout_gravity="bottom"
         android:indeterminate="true"
         android:indeterminateTint="@android:color/holo_blue_dark"
-        android:indeterminateTintMode="src_in"
-        />
+        android:indeterminateTintMode="src_in" />
 
     <Button
         android:id="@+id/retryButton"
@@ -22,4 +20,5 @@
         android:layout_gravity="center"
         android:text="@string/retry"
         android:visibility="gone" />
+
 </FrameLayout>
