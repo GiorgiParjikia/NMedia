@@ -116,21 +116,16 @@ class FeedFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.data.collectLatest(adapter::submitData)
+                viewModel.data.collectLatest { pagingData ->
+                    adapter.submitData(pagingData)
+                }
             }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                adapter.loadStateFlow.collectLatest { state ->
-                    viewLifecycleOwner.lifecycleScope.launch {
-                        viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                            adapter.loadStateFlow.collectLatest { state ->
-                                binding.swipeRefresh.isRefreshing = state.refresh is LoadState.Loading
-                            }
-                        }
-                    }
-
+                adapter.loadStateFlow.collectLatest { loadStates ->
+                    binding.swipeRefresh.isRefreshing = loadStates.refresh is LoadState.Loading
                 }
             }
         }

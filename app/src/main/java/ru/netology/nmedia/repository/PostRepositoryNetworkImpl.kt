@@ -1,6 +1,11 @@
 package ru.netology.nmedia.repository
 
-import androidx.paging.*
+import androidx.paging.ExperimentalPagingApi
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.insertSeparators
+import androidx.paging.map
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import okhttp3.MultipartBody
@@ -9,7 +14,12 @@ import ru.netology.nmedia.api.PostsApiService
 import ru.netology.nmedia.dao.PostDao
 import ru.netology.nmedia.dao.PostRemoteKeyDao
 import ru.netology.nmedia.db.AppDb
-import ru.netology.nmedia.dto.*
+import ru.netology.nmedia.dto.Ad
+import ru.netology.nmedia.dto.Attachment
+import ru.netology.nmedia.dto.AttachmentType
+import ru.netology.nmedia.dto.FeedItem
+import ru.netology.nmedia.dto.Media
+import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.entity.PostEntity
 import java.io.File
 import java.io.IOException
@@ -19,8 +29,8 @@ import kotlin.random.Random
 class PostRepositoryNetworkImpl @Inject constructor(
     private val dao: PostDao,
     private val apiService: PostsApiService,
-    private val remoteKeyDao: PostRemoteKeyDao,
-    private val appDb: AppDb,
+    postRemoteKeyDao: PostRemoteKeyDao,
+    appDb: AppDb,
 ) : PostRepository {
 
     @OptIn(ExperimentalPagingApi::class)
@@ -32,41 +42,16 @@ class PostRepositoryNetworkImpl @Inject constructor(
         remoteMediator = PostRemoteMediator(
             api = apiService,
             postDao = dao,
-            keyDao = remoteKeyDao,
+            keyDao = postRemoteKeyDao,
             db = appDb
         ),
         pagingSourceFactory = dao::pagingSource
     )
         .flow
         .map { pagingData ->
-            pagingData
-                .map(PostEntity::toDto)
-                .insertSeparators { before, after ->
+            pagingData.map(PostEntity::toDto)
+                .insertSeparators { _, _ -> null }
 
-                    // 🔹 Нет разделителя
-                    if (before == null || after == null) return@insertSeparators null
-
-                    val dateBefore = before.published
-                    val dateAfter = after.published
-
-                    // 🔹 Сегодня — Вчера — Неделя
-                    val diff = dateBefore - dateAfter
-
-                    when {
-                        diff < 24 * 60 * 60 * 1000 -> FeedItem.TodaySeparator("Сегодня")
-                        diff < 2 * 24 * 60 * 60 * 1000 -> FeedItem.YesterdaySeparator("Вчера")
-                        diff < 7 * 24 * 60 * 60 * 1000 -> FeedItem.LastWeekSeparator("На прошлой неделе")
-
-                        else -> null
-                    }
-                }
-                .map { feed ->
-
-                    // 🔹 Вставляем рекламу каждые 5 элементов
-                    if (Random.nextInt(0, 5) == 0) {
-                        Ad(Random.nextLong(), "https://netology.ru")
-                    } else feed
-                }
         }
 
     override fun isEmpty(): Flow<Boolean> = dao.isEmpty()
@@ -76,13 +61,15 @@ class PostRepositoryNetworkImpl @Inject constructor(
     }
 
     override suspend fun removeById(id: Long) {
-        val old = dao.getPostById(id)?.toDto()
+        val postToRemove = dao.getPostById(id)?.toDto()
         dao.removeById(id)
 
         try {
             apiService.removeById(id)
         } catch (e: IOException) {
-            if (old != null) dao.insert(PostEntity.fromDto(old))
+            if (postToRemove != null) {
+                dao.insert(PostEntity.fromDto(postToRemove))
+            }
             throw e
         }
     }
@@ -100,11 +87,12 @@ class PostRepositoryNetworkImpl @Inject constructor(
         dao.insert(PostEntity.fromDto(updated))
 
         return try {
-            val response = if (liked) apiService.likeById(id) else apiService.dislikeById(id)
+            val response =
+                if (liked) apiService.likeById(id) else apiService.dislikeById(id)
+
             val result = response.body() ?: updated
             dao.insert(PostEntity.fromDto(result))
             result
-
         } catch (e: IOException) {
             dao.insert(PostEntity.fromDto(post))
             throw e
@@ -130,12 +118,10 @@ class PostRepositoryNetworkImpl @Inject constructor(
             saved
 
         } catch (e: IOException) {
-
             val local = post.copy(
                 id = -System.currentTimeMillis(),
-                published = System.currentTimeMillis()
+                published = 0L
             )
-
             dao.insert(PostEntity.fromDto(local, isLocal = true))
             local
         }
@@ -146,7 +132,7 @@ class PostRepositoryNetworkImpl @Inject constructor(
             MultipartBody.Part.createFormData(
                 "file",
                 file.name,
-                file.asRequestBody()
+                file.asRequestBody(),
             )
         )
         return response.body() ?: throw RuntimeException("Upload failed")

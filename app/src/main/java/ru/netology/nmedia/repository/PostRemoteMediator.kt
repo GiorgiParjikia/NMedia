@@ -32,29 +32,39 @@ class PostRemoteMediator(
         return try {
             val response = when (loadType) {
 
+                // Подгрузка сверху (PREPEND)
                 LoadType.PREPEND -> {
-                    return MediatorResult.Success(endOfPaginationReached = true)
+                    val afterKey = keyDao.getKey(KeyType.AFTER)
+                        ?: return MediatorResult.Success(endOfPaginationReached = true)
+
+                    val resp = api.getAfter(afterKey, state.config.pageSize)
+                    if (!resp.isSuccessful) throw HttpException(resp)
+                    resp
                 }
 
+                // Обновление списка (REFRESH)
                 LoadType.REFRESH -> {
                     val afterKey = keyDao.getKey(KeyType.AFTER)
-
-                    if (afterKey == null) {
+                    val resp = if (afterKey == null) {
                         api.getLatest(state.config.pageSize)
                     } else {
                         api.getAfter(afterKey, state.config.pageSize)
                     }
+                    if (!resp.isSuccessful) throw HttpException(resp)
+                    resp
                 }
+
 
                 LoadType.APPEND -> {
                     val beforeKey = keyDao.getKey(KeyType.BEFORE)
                         ?: return MediatorResult.Success(endOfPaginationReached = true)
 
-                    api.getBefore(beforeKey, state.config.pageSize)
+                    val resp = api.getBefore(beforeKey, state.config.pageSize)
+                    if (!resp.isSuccessful) throw HttpException(resp)
+                    resp
                 }
             }
 
-            if (!response.isSuccessful) throw HttpException(response)
             val posts = response.body().orEmpty()
             val endReached = posts.isEmpty()
 
@@ -65,9 +75,7 @@ class PostRemoteMediator(
                         if (posts.isNotEmpty()) {
                             val first = posts.first().id
                             val last = posts.last().id
-
                             val savedAfter = keyDao.getKey(KeyType.AFTER)
-
                             if (savedAfter == null) {
                                 keyDao.insert(PostRemoteKeyEntity(KeyType.AFTER, first))
                                 keyDao.insert(PostRemoteKeyEntity(KeyType.BEFORE, last))
@@ -83,7 +91,13 @@ class PostRemoteMediator(
                             keyDao.insert(PostRemoteKeyEntity(KeyType.BEFORE, last))
                         }
                     }
-                    LoadType.PREPEND -> Unit
+
+                    LoadType.PREPEND -> {
+                        if (posts.isNotEmpty()) {
+                            val first = posts.first().id
+                            keyDao.insert(PostRemoteKeyEntity(KeyType.AFTER, first))
+                        }
+                    }
                 }
 
                 postDao.insert(posts.map(PostEntity::fromDto))
