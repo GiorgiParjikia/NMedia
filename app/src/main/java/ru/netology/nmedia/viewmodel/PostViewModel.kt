@@ -6,6 +6,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
+import androidx.paging.insertSeparators
 import androidx.paging.map
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import ru.netology.nmedia.auth.AppAuth
+import ru.netology.nmedia.dto.Ad
+import ru.netology.nmedia.dto.FeedItem
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.model.FeedModelState
 import ru.netology.nmedia.model.PhotoModel
@@ -56,14 +59,25 @@ class PostViewModel @Inject constructor(
     private val _postCreated = SingleLiveEvent<Unit>()
     val postCreated: LiveData<Unit> = _postCreated
 
-    val data: Flow<PagingData<Post>> =
+    val data: Flow<PagingData<FeedItem>> =
         appAuth.data
             .flatMapLatest { token ->
                 repository.data
                     .map { pagingData ->
-                        pagingData.map { post ->
-                            post.copy(ownedByMe = post.authorId == token?.id)
-                        }
+                        pagingData
+                            .map { item ->
+                                if (item is Post) {
+                                    item.copy(ownedByMe = item.authorId == token?.id)
+                                } else item
+                            }
+                            .insertSeparators { before, after ->
+                                if (before is Post && before.id % 5L == 0L) {
+                                    Ad(
+                                        id = -before.id,
+                                        image = "figma.jpg"
+                                    )
+                                } else null
+                            }
                     }
             }
             .flowOn(Dispatchers.Default)
@@ -143,7 +157,7 @@ class PostViewModel @Inject constructor(
     fun loadPosts() = viewModelScope.launch {
         try {
             _state.postValue(FeedModelState(loading = true))
-            _state.value = FeedModelState()   // RemoteMediator сам всё подгрузит
+            _state.value = FeedModelState()
         } catch (_: Exception) {
             _state.value = FeedModelState(error = true)
         }

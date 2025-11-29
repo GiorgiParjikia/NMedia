@@ -43,16 +43,16 @@ class SinglePostFragment : Fragment() {
     ): View {
         _binding = FragmentSinglePostBinding.inflate(inflater, container, false)
 
-        // ИЩЕМ ПОСТ В PAGINGDATA
         lifecycleScope.launch {
             viewModel.data.collectLatest { pagingData ->
-                pagingData.map { post ->
-                    if (post.id == postId) {
-                        bindPost(post)
+                pagingData.map { item ->
+                    if (item is Post && item.id == postId) {
+                        bindPost(item)
                     }
                 }
             }
         }
+
 
         return binding.root
     }
