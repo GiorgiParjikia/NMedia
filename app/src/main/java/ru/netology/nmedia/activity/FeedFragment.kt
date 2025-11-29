@@ -9,7 +9,6 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.net.toUri
-import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
@@ -22,6 +21,7 @@ import kotlinx.coroutines.flow.collectLatest
 import ru.netology.nmedia.R
 import ru.netology.nmedia.adapter.OnInteractionListener
 import ru.netology.nmedia.adapter.PostAdapter
+import ru.netology.nmedia.adapter.PostLoadingStateAdapter
 import ru.netology.nmedia.databinding.FragmentFeedBinding
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.viewmodel.AuthViewModel
@@ -83,8 +83,11 @@ class FeedFragment : Fragment() {
                 try {
                     startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                 } catch (_: ActivityNotFoundException) {
-                    Toast.makeText(requireContext(), R.string.no_app_to_open, Toast.LENGTH_SHORT)
-                        .show()
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.no_app_to_open,
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
 
@@ -97,7 +100,10 @@ class FeedFragment : Fragment() {
         })
 
         binding.list.layoutManager = LinearLayoutManager(requireContext())
-        binding.list.adapter = adapter
+        binding.list.adapter = adapter.withLoadStateHeaderAndFooter(
+            header = PostLoadingStateAdapter { adapter.retry() },
+            footer = PostLoadingStateAdapter { adapter.retry() }
+        )
 
         binding.swipeRefresh.setOnRefreshListener {
             adapter.refresh()
@@ -111,10 +117,8 @@ class FeedFragment : Fragment() {
 
         lifecycleScope.launchWhenCreated {
             adapter.loadStateFlow.collectLatest { state ->
-
-                binding.swipeRefresh.isRefreshing = state.refresh is LoadState.Loading
-
-                binding.progress.isVisible = state.append is LoadState.Loading
+                binding.swipeRefresh.isRefreshing =
+                    state.refresh is LoadState.Loading
             }
         }
 

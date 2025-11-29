@@ -34,7 +34,7 @@ class ApiModule {
     @Singleton
     fun provideOkHttp(
         logging: HttpLoggingInterceptor,
-        authInterceptor: AuthInterceptor,   // <-- больше не AppAuth
+        authInterceptor: AuthInterceptor,
     ): OkHttpClient =
         OkHttpClient.Builder()
             .addInterceptor(logging)
